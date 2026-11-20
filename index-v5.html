@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MahallaNazorat — Shahar va Mahalla Infratuzilmasi Monitoring Tizimi (V5)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style-v5.css">
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Yon menyu (Sidebar) -->
+    <aside class="sidebar" id="sidebar">
+      <div class="brand-box">
+        <div class="brand-logo">🛡️</div>
+        <div class="brand-text">
+          <div class="brand-title">MahallaNazorat</div>
+          <span class="brand-badge">FAOL TIZIM • V5</span>
+        </div>
+        <button class="icon-btn mobile-only" id="closeSidebarBtn" aria-label="Menyuni yopish">✕</button>
+      </div>
+
+      <nav class="nav-menu">
+        <button class="nav-item active" data-view="dashboard">
+          <span class="nav-icon">🏠</span>
+          <span>Bosh sahifa</span>
+        </button>
+        <button class="nav-item" data-view="issues">
+          <span class="nav-icon">📋</span>
+          <span>Muammolar</span>
+          <span class="nav-count" id="sidebarIssueCount">0</span>
+        </button>
+        <button class="nav-item" data-view="map">
+          <span class="nav-icon">🗺️</span>
+          <span>Xarita</span>
+        </button>
+        <button class="nav-item" data-view="beforeAfter">
+          <span class="nav-icon">🔄</span>
+          <span>Oldin / Keyin</span>
+        </button>
+        <button class="nav-item" data-view="hotlines">
+          <span class="nav-icon">📞</span>
+          <span>Tezkor Xizmatlar</span>
+        </button>
+        <button class="nav-item" data-view="stats">
+          <span class="nav-icon">📊</span>
+          <span>Statistika &amp; Grafik</span>
+        </button>
+        <button class="nav-item" data-view="dutyPlan">
+          <span class="nav-icon">🗓️</span>
+          <span>Navbatchilik &amp; Reja</span>
+        </button>
+        <button class="nav-item" data-view="admins">
+          <span class="nav-icon">👥</span>
+          <span>Adminlar</span>
+        </button>
+        <button class="nav-item" data-view="adminNotesReport">
+          <span class="nav-icon">📝</span>
+          <span>Eslatma &amp; Hisobot</span>
+        </button>
+        <button class="nav-item" data-view="settings">
+          <span class="nav-icon">⚙️</span>
+          <span>Sozlamalar</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="quick-help-btn" id="openHelpBtn">
+          <span>❓ Tezkor yordam</span>
+          <span>›</span>
+        </button>
+        <div class="user-card">
+          <div class="avatar" id="currentUserAvatar">HA</div>
+          <div class="user-meta">
+            <div class="user-name" id="currentUserName">Hamdov A.</div>
+            <div class="user-role" id="currentUserRole">Bosh Admin • Toshkent</div>
+          </div>
+          <button class="icon-btn small" id="resetDemoBtn" title="Boshlang‘ich ma’lumotlarga qaytarish">↺</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Asosiy kontent -->
+    <div class="main-wrapper" id="mainWrapper">
+      <!-- Yuqori panel -->
+      <header class="topbar" data-section-id="topbar">
+        <div class="topbar-left">
+          <button class="icon-btn mobile-only" id="openSidebarBtn" aria-label="Menyuni ochish">☰</button>
+          <div class="breadcrumb">
+            <span>Boshqaruv paneli</span>
+            <span>›</span>
+            <strong id="currentBreadcrumb">Bosh sahifa</strong>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <div class="role-switcher-wrap">
+            <label for="activeAdminSelect" class="muted-text" style="font-size:0.78rem;">Faol profil:</label>
+            <select id="activeAdminSelect" class="select-control small-select" aria-label="Faol admin profili"></select>
+            <span class="admin-status-pill active-pill" id="activeAdminStatusBadge">Faol</span>
+          </div>
+          <button class="pill-btn" id="langToggleBtn" title="Tilni almashtirish">O‘Z</button>
+          <button class="pill-btn" id="themeToggleBtn" title="Tungi/Kunduzgi rejim">🌙 Tungi</button>
+          <div class="notification-wrap">
+            <button class="pill-btn notif-btn" id="notifBtn">
+              🔔 Bildirishnomalar
+              <span class="badge-dot" id="notifCount">3</span>
+            </button>
+            <div class="dropdown-panel hidden" id="notifDropdown">
+              <div class="dropdown-header">
+                <strong>So‘nggi xabarnomalar</strong>
+                <button class="link-btn" id="markAllReadBtn">Barchasini o‘qilgan qilish</button>
+              </div>
+              <ul class="notif-list" id="notifList"></ul>
+            </div>
+          </div>
+          <span class="status-pill"><span class="dot-live"></span> Tizim: Faol</span>
+        </div>
+      </header>
+
+      <!-- Muzlatilgan admin ogohlantirishi -->
+      <div class="frozen-banner hidden" id="frozenAdminBanner">
+        <span>❄️ <strong>Diqqat:</strong> Joriy admin profili vaqtinchalik muzlatilgan. Ko‘rish mumkin, lekin o‘zgartirish kiritish uchun profilni faollashtiring.</span>
+        <button type="button" class="mini-btn" id="unfreezeCurrentAdminBtn">Faollashtirish</button>
+      </div>
+
+      <!-- Sahifa harakat paneli -->
+      <section class="action-bar" data-section-id="actionBar">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="searchInput" placeholder="Muammo, ID (#W-104) yoki manzilni qidiring..." />
+          <button class="clear-search hidden" id="clearSearchBtn" aria-label="Qidiruvni tozalash">✕</button>
+        </div>
+
+        <div class="action-buttons">
+          <select id="topDistrictSelect" class="select-control" aria-label="Hudud bo‘yicha filtrlash">
+            <option value="all">Hududlar: Barchasi</option>
+            <option value="Yunusobod">Yunusobod tumani</option>
+            <option value="Chilonzor">Chilonzor tumani</option>
+            <option value="Mirzo Ulug‘bek">Mirzo Ulug‘bek tumani</option>
+            <option value="Uchtepa">Uchtepa tumani</option>
+            <option value="Yakkasaroy">Yakkasaroy tumani</option>
+          </select>
+
+          <button class="secondary-btn" id="printReportBtn">🖨️ Chop etish</button>
+          <button class="primary-btn" id="openAddModalBtn">+ Yangi muammo qo‘shish</button>
+        </div>
+      </section>
+
+      <!-- Umumiy statistik kartochkalar -->
+      <section class="kpi-grid" data-section-id="kpiGrid">
+        <div class="kpi-card">
+          <div class="kpi-label">Jami kelib tushgan</div>
+          <div class="kpi-value" id="kpiTotal">0</div>
+          <div class="kpi-sub">Ro‘yxatga olingan murojaatlar</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Hal etilgan</div>
+          <div class="kpi-value success-text" id="kpiResolvedPct">0%</div>
+          <div class="kpi-sub" id="kpiResolvedCount">0 ta muammo bartaraf etildi</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Jarayonda</div>
+          <div class="kpi-value warn-text" id="kpiActive">0</div>
+          <div class="kpi-sub">Ko‘rib chiqilmoqda / Brigada yuborilgan</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Jami ovozlar</div>
+          <div class="kpi-value accent-text" id="kpiVotes">0</div>
+          <div class="kpi-sub">Aholi tomonidan qo‘llab-quvvatlangan</div>
+        </div>
+      </section>
+
+      <!-- Asosiy 2 ustunli ish maydoni -->
+      <main class="workspace-grid" id="workspaceGrid" data-section-id="workspaceGrid">
+        <!-- Chap/Markaziy ustun: Muammolar -->
+        <section class="panel main-panel" id="issuesSection">
+          <div class="panel-header">
+            <div>
+              <h1 class="panel-title">Faol Infratuzilma Muammolari</h1>
+              <p class="panel-subtitle">Tumanlar, holat va xizmat turlari bo‘yicha murojaatlarni boshqaring</p>
+            </div>
+            <span class="result-chip" id="resultCountLabel">0 ta natija</span>
+          </div>
+
+          <!-- Tezkor filtrlash presetlari -->
+          <div class="preset-bar" id="presetBar">
+            <span class="preset-label">Tezkor filtr:</span>
+            <button type="button" class="preset-btn active" data-preset="all">Barcha murojaatlar</button>
+            <button type="button" class="preset-btn urgent-preset" data-preset="urgent">🚨 Juda Shoshilinch</button>
+            <button type="button" class="preset-btn" data-preset="brigade">🛠️ Brigada yuborilgan</button>
+            <button type="button" class="preset-btn" data-preset="topvotes">🔥 Eng ko‘p ovozli</button>
+            <button type="button" class="preset-btn" data-preset="unread_admin">👁️ Men o‘qimaganlar</button>
+          </div>
+
+          <div class="category-tabs" id="categoryTabs">
+            <button class="cat-tab active" data-category="all">Barchasi</button>
+            <button class="cat-tab" data-category="Suv">💧 Suv</button>
+            <button class="cat-tab" data-category="Elektr">⚡ Elektr &amp; Energiya</button>
+            <button class="cat-tab" data-category="Yo‘l">🛣️ Yo‘l &amp; Infratuzilma</button>
+            <button class="cat-tab" data-category="Gaz">🔥 Gaz</button>
+            <button class="cat-tab" data-category="Yoritish">💡 Yoritish</button>
+          </div>
+
+          <div class="sub-filters">
+            <select id="statusFilter" class="select-control small-select" aria-label="Holat filtri">
+              <option value="all">Holati: Barchasi</option>
+              <option value="Yangi">Yangi</option>
+              <option value="O‘rganilmoqda">O‘rganilmoqda</option>
+              <option value="Brigada yuborildi">Brigada yuborildi</option>
+              <option value="Hal qilindi">Hal qilindi</option>
+            </select>
+
+            <select id="priorityFilter" class="select-control small-select" aria-label="Muhimlik filtri">
+              <option value="all">Muhimligi: Barchasi</option>
+              <option value="Juda Shoshilinch">Juda Shoshilinch</option>
+              <option value="Muhim">Muhim</option>
+              <option value="O‘rtacha">O‘rtacha</option>
+            </select>
+
+            <select id="sortSelect" class="select-control small-select" aria-label="Saralash">
+              <option value="newest">Saralash: Eng yangilari</option>
+              <option value="votes">Eng ko‘p ovozli</option>
+              <option value="priority">Muhimligi bo‘yicha</option>
+            </select>
+
+            <button class="ghost-btn" id="resetFiltersBtn">Filtrlarni tozalash</button>
+          </div>
+
+          <div class="issues-list" id="issuesList"></div>
+        </section>
+
+        <!-- O‘ng ustun: Tezkor xarita, vizual statistika diagrammasi va hisobotlar -->
+        <aside class="side-panel" id="sidePanel">
+          <div class="panel" id="mapSection">
+            <div class="panel-header compact">
+              <div>
+                <h2 class="panel-title small-title">Tezkor Xarita</h2>
+                <p class="panel-subtitle">Nuqtani bosing — murojaatni ko‘ring</p>
+              </div>
+              <button class="mini-btn" id="resetMapFocusBtn">Barcha nuqtalar</button>
+            </div>
+
+            <div class="map-canvas" id="mapCanvas">
+              <div class="map-grid-overlay"></div>
+              <div class="map-city-watermark">TOSHKENT SHAHRI</div>
+              <div id="mapPinsContainer"></div>
+            </div>
+
+            <div class="map-selected-card" id="mapSelectedInfo"></div>
+          </div>
+
+          <!-- Vizual statistika diagrammasi -->
+          <div class="panel" id="statsSection">
+            <div class="panel-header compact">
+              <div>
+                <h2 class="panel-title small-title">Yo‘nalishlar Bo‘yicha Diagramma</h2>
+                <p class="panel-subtitle">Muammolar soni va hal qilinish ulushi</p>
+              </div>
+              <span class="muted-text" id="overallCompletionBadge">0%</span>
+            </div>
+            <div class="chart-box" id="categoryChartContainer"></div>
+            <div class="district-bars" id="districtBars" style="margin-top:14px;"></div>
+          </div>
+
+          <div class="panel" id="reportsSection">
+            <div class="panel-header compact">
+              <h2 class="panel-title small-title">Hal Etilgan Hisobotlar</h2>
+              <button class="link-btn" id="openAllReportsBtn">Barchasi</button>
+            </div>
+            <div class="reports-list" id="reportsList"></div>
+          </div>
+        </aside>
+      </main>
+
+      <!-- Adminlar boshqaruvi (Admin berish, vaqtinchalik muzlatish va nazorat) -->
+      <section class="panel" id="adminsSection" data-section-id="adminsSection">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Adminlar va Nazoratchilar Boshqaruvi</h2>
+            <p class="panel-subtitle">Admin huquqi bering, vaqtinchalik muzlating yoki qayta faollashtiring</p>
+          </div>
+          <span class="result-chip" id="adminCountChip">0 ta admin</span>
+        </div>
+
+        <form id="grantAdminForm" class="admin-grant-form">
+          <input type="text" id="newAdminName" placeholder="Ism familiya (masalan: Azizbek Rustamov)" required />
+          <input type="text" id="newAdminPhone" placeholder="Telefon (masalan: +998 90 777-11-22)" />
+          <select id="newAdminDistrict" class="select-control small-select">
+            <option value="Barcha tumanlar">Barcha tumanlar</option>
+            <option value="Yunusobod">Yunusobod</option>
+            <option value="Chilonzor">Chilonzor</option>
+            <option value="Mirzo Ulug‘bek">Mirzo Ulug‘bek</option>
+            <option value="Uchtepa">Uchtepa</option>
+            <option value="Yakkasaroy">Yakkasaroy</option>
+          </select>
+          <select id="newAdminRole" class="select-control small-select">
+            <option value="Admin (O‘qish &amp; Nazorat)">Admin (O‘qish &amp; Nazorat)</option>
+            <option value="Katta Admin (To‘liq boshqaruv)">Katta Admin (To‘liq boshqaruv)</option>
+          </select>
+          <button type="submit" class="primary-btn">+ Admin berish</button>
+        </form>
+
+        <div class="admins-grid" id="adminsGrid"></div>
+      </section>
+
+      <!-- Admin shaxsiy eslatmalari va Kunlik admin hisoboti -->
+      <section class="panel" id="adminNotesReportSection" data-section-id="adminNotesReportSection">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Admin Shaxsiy Eslatmalari va Kunlik Admin Hisoboti</h2>
+            <p class="panel-subtitle" id="notesSubtitle">Faol adminning shaxsiy bloknoti va barcha adminlarning kunlik ko‘rsatkichlari</p>
+          </div>
+          <span class="result-chip" id="adminNotesCountChip">0 ta eslatma</span>
+        </div>
+
+        <div class="notes-report-layout">
+          <!-- Admin uchun shaxsiy eslatmalar -->
+          <div class="sub-panel-box">
+            <h3 class="sub-block-title">📓 Shaxsiy Eslatmalar (<span id="notesOwnerLabel">Hamdov A.</span>)</h3>
+            <form id="addPersonalNoteForm" class="inline-task-form">
+              <input type="text" id="personalNoteInput" placeholder="Shaxsiy eslatma yozing (masalan: 11:00 da brigada bilan bog‘lanish)..." required />
+              <button type="submit" class="primary-btn">+ Saqlash</button>
+            </form>
+            <div class="personal-notes-list" id="personalNotesList"></div>
+          </div>
+
+          <!-- Kunlik admin hisoboti -->
+          <div class="sub-panel-box">
+            <div class="report-box-top">
+              <h3 class="sub-block-title" style="margin-bottom:0;">📈 Kunlik Admin Hisoboti</h3>
+              <span class="muted-text" id="dailyReportDateLabel">Bugun</span>
+            </div>
+            <div class="daily-report-list" id="dailyAdminReportList" style="margin-top:10px;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Kundalik / Haftalik Reja va Navbatchilik Jadvali -->
+      <section class="panel" id="dutyPlanSection" data-section-id="dutyPlanSection">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Haftalik Navbatchilik Jadvali va Vazifalar Rejasi</h2>
+            <p class="panel-subtitle">Brigadalar navbatchiligi va kunlik nazorat vazifalarini boshqaring</p>
+          </div>
+          <span class="result-chip" id="dutyProgressChip">0/0 bajarildi</span>
+        </div>
+
+        <div class="duty-layout">
+          <div class="duty-column">
+            <h3 class="sub-block-title">Haftalik Navbatchilik</h3>
+            <div class="duty-schedule-list" id="dutyScheduleList"></div>
+          </div>
+
+          <div class="duty-column">
+            <h3 class="sub-block-title">Nazorat Vazifalari Rejasi</h3>
+            <form id="addTaskForm" class="inline-task-form">
+              <input type="text" id="newTaskText" placeholder="Yangi vazifa yozing (masalan: Chilonzor 6-mavze chiroqlarini tekshirish)..." required />
+              <select id="newTaskAssignee" class="select-control small-select"></select>
+              <button type="submit" class="primary-btn">+ Qo‘shish</button>
+            </form>
+            <div class="tasks-checklist" id="tasksChecklist"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Oldin / Keyin solishtiruv galereyasi -->
+      <section class="panel" id="beforeAfterSection" data-section-id="beforeAfterSection">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Oldin / Keyin — Ta’mirlangan Ishlar Solishtiruvi</h2>
+            <p class="panel-subtitle">Bartaraf etilgan infratuzilma muammolarining avvalgi va keyingi holati</p>
+          </div>
+          <div class="ba-mode-tabs" id="baModeTabs">
+            <button class="mini-btn ba-tab active" data-ba-mode="compare">Yonma-yon</button>
+            <button class="mini-btn ba-tab" data-ba-mode="before">Faqat Oldin</button>
+            <button class="mini-btn ba-tab" data-ba-mode="after">Faqat Keyin</button>
+          </div>
+        </div>
+        <div class="ba-grid" id="beforeAfterGrid"></div>
+      </section>
+
+      <!-- Tezkor kontaktlar ma’lumotnomasi -->
+      <section class="panel" id="hotlinesSection" data-section-id="hotlinesSection">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Avariya va Mas’ul Xizmatlar Tezkor Kontaktlari</h2>
+            <p class="panel-subtitle">Navbatchilik raqamlari, o‘rtacha javob vaqti va bir bosishda nusxalash</p>
+          </div>
+          <div class="category-tabs" id="hotlineFilterTabs">
+            <button class="cat-tab active" data-hcat="all">Barchasi</button>
+            <button class="cat-tab" data-hcat="Suv">Suv</button>
+            <button class="cat-tab" data-hcat="Elektr">Elektr</button>
+            <button class="cat-tab" data-hcat="Gaz">Gaz</button>
+            <button class="cat-tab" data-hcat="Yo‘l">Yo‘l</button>
+            <button class="cat-tab" data-hcat="Yoritish">Yoritish</button>
+          </div>
+        </div>
+        <div class="hotlines-grid" id="hotlinesGrid"></div>
+      </section>
+
+      <!-- Mahallalar va Sozlamalar -->
+      <section class="bottom-grid" id="bottomGrid" data-section-id="bottomGrid">
+        <div class="panel" id="mahallasSection">
+          <div class="panel-header compact">
+            <h2 class="panel-title small-title">Biriktirilgan Mahallalar</h2>
+            <span class="muted-text">Mas’ul vakillar</span>
+          </div>
+          <div class="mahalla-cards" id="mahallaList"></div>
+        </div>
+
+        <!-- JOYLASHUV VA TARTIB SOZLAMALARI -->
+        <div class="panel" id="settingsSection">
+          <div class="panel-header compact">
+            <div>
+              <h2 class="panel-title small-title">Ko‘rinish, Tartib va Joylashuv Sozlamalari</h2>
+              <p class="panel-subtitle">Bo‘limlar joylashuvi aralashmasligi uchun tartibni boshqaring</p>
+            </div>
+            <span class="layout-lock-pill" id="layoutLockBadge">🔒 Qulflangan</span>
+          </div>
+
+          <div class="settings-controls">
+            <div class="setting-row">
+              <div>
+                <strong>Joylashuvni qulflash (Layout Lock)</strong>
+                <div class="muted-text">Bloklar joylashuvini tasodifiy o‘zgarishdan saqlash</div>
+              </div>
+              <button class="pill-btn active-toggle" id="lockLayoutBtn">🔒 Qulflangan</button>
+            </div>
+
+            <div class="setting-block">
+              <div class="setting-block-top">
+                <strong>Bo‘limlar ketma-ketligi</strong>
+                <span class="muted-text">Yuqori/pastga surish</span>
+              </div>
+              <div class="section-order-list" id="sectionOrderList"></div>
+            </div>
+
+            <div class="setting-row">
+              <div>
+                <strong>Kartochkalar zichligi</strong>
+                <div class="muted-text">Bo‘shliq va kenglik tartibi</div>
+              </div>
+              <div class="btn-group" id="densityGroup">
+                <button class="mini-btn density-btn active" data-density="comfortable">Qulay</button>
+                <button class="mini-btn density-btn" data-density="compact">Ixcham</button>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div>
+                <strong>Ish maydoni tartibi</strong>
+                <div class="muted-text">2 ustunli yoki 1 ustunli ro‘yxat</div>
+              </div>
+              <div class="btn-group" id="workspaceModeGroup">
+                <button class="mini-btn ws-btn active" data-wsmode="split">2 ustun</button>
+                <button class="mini-btn ws-btn" data-wsmode="stacked">1 ustun</button>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div>
+                <strong>Shrift o‘lchami</strong>
+                <div class="muted-text">Matn o‘lchamini moslash</div>
+              </div>
+              <div class="btn-group">
+                <button class="mini-btn" id="fontDecreaseBtn">A-</button>
+                <button class="mini-btn" id="fontResetBtn">100%</button>
+                <button class="mini-btn" id="fontIncreaseBtn">A+</button>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div>
+                <strong>Avtomatik saqlash</strong>
+                <div class="muted-text">Joylashuv va holat brauzerda saqlanadi</div>
+              </div>
+              <button class="pill-btn active-toggle" id="autosaveToggleBtn">Yoqilgan</button>
+            </div>
+
+            <div class="setting-actions-bar">
+              <button class="secondary-btn small-action" id="resetLayoutOrderBtn">↺ Standart tartibga qaytarish</button>
+              <button class="mini-btn" id="exportJsonBtn">⬇️ Eksport</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="footer" data-section-id="footer">
+        <span>MahallaNazorat © 2026 — Jamoatchilik infratuzilma monitoring platformasi</span>
+        <span>Muzlatish • Shaxsiy Eslatmalar • Kunlik Admin Hisoboti • Navbatchilik</span>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Yangi muammo qo‘shish modali -->
+  <div class="modal-backdrop hidden" id="addIssueModal" role="dialog" aria-modal="true" aria-labelledby="addModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="addModalTitle">Yangi Muammo Qo‘shish</h2>
+        <button class="icon-btn" id="closeAddModalBtn" aria-label="Yopish">✕</button>
+      </div>
+      <form id="addIssueForm" class="modal-form">
+        <div class="form-row two-col">
+          <div class="form-group">
+            <label for="issueTitle">Muammo sarlavhasi *</label>
+            <input type="text" id="issueTitle" required placeholder="Masalan: Ko‘cha chirog‘i yonmayapti" />
+          </div>
+          <div class="form-group">
+            <label for="issueCategory">Yo‘nalish *</label>
+            <select id="issueCategory" required>
+              <option value="Suv">Suv</option>
+              <option value="Elektr">Elektr</option>
+              <option value="Yo‘l">Yo‘l</option>
+              <option value="Gaz">Gaz</option>
+              <option value="Yoritish">Yoritish</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row two-col">
+          <div class="form-group">
+            <label for="issueDistrict">Tuman *</label>
+            <select id="issueDistrict" required>
+              <option value="Yunusobod">Yunusobod</option>
+              <option value="Chilonzor">Chilonzor</option>
+              <option value="Mirzo Ulug‘bek">Mirzo Ulug‘bek</option>
+              <option value="Uchtepa">Uchtepa</option>
+              <option value="Yakkasaroy">Yakkasaroy</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="issuePriority">Muhimlik darajasi *</label>
+            <select id="issuePriority" required>
+              <option value="Juda Shoshilinch">Juda Shoshilinch</option>
+              <option value="Muhim">Muhim</option>
+              <option value="O‘rtacha">O‘rtacha</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row two-col">
+          <div class="form-group">
+            <label for="issueAddress">Aniq manzil *</label>
+            <input type="text" id="issueAddress" required placeholder="Masalan: 7-mavze, 18-uy oldi" />
+          </div>
+          <div class="form-group">
+            <label for="issueService">Mas’ul xizmat</label>
+            <input type="text" id="issueService" placeholder="Masalan: Toshkent Shahar Elektr Tarmoqlari" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="issueVisualTag">Vizual holat belgisi</label>
+          <select id="issueVisualTag">
+            <option value="💧 Quvur / Suv tarmog‘i">💧 Quvur / Suv tarmog‘i</option>
+            <option value="⚡ Transformator / Kabel">⚡ Transformator / Kabel</option>
+            <option value="🛣️ Yo‘l qoplamasi / Chuqurlik">🛣️ Yo‘l qoplamasi / Chuqurlik</option>
+            <option value="🔥 Gaz quvuri / Bosim">🔥 Gaz quvuri / Bosim</option>
+            <option value="💡 Ko‘cha yoritish ustuni">💡 Ko‘cha yoritish ustuni</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="issueDesc">Batafsil tavsif *</label>
+          <textarea id="issueDesc" rows="3" required placeholder="Vaziyatni qisqa va aniq yozing..."></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="secondary-btn" id="cancelAddModalBtn">Bekor qilish</button>
+          <button type="submit" class="primary-btn">Murojaatni yuborish</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Batafsil ko‘rish, Vaqt shkalasi va izoh yozish modali -->
+  <div class="modal-backdrop hidden" id="detailModal" role="dialog" aria-modal="true" aria-labelledby="detailModalTitle">
+    <div class="modal-card wide-modal">
+      <div class="modal-header">
+        <div>
+          <span class="code-pill" id="detailCode">#ID</span>
+          <h2 id="detailModalTitle" class="inline-title">Muammo tafsilotlari</h2>
+        </div>
+        <button class="icon-btn" id="closeDetailModalBtn" aria-label="Yopish">✕</button>
+      </div>
+      <div id="detailModalBody" class="detail-body"></div>
+      <form id="commentForm" class="comment-form">
+        <input type="text" id="commentInput" placeholder="Nazorat izohi yoki yangilik yozing..." required />
+        <button type="submit" class="primary-btn">Izoh qo‘shish</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Tezkor yordam modali -->
+  <div class="modal-backdrop hidden" id="helpModal" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Tezkor Yordam va Qo‘llanma</h2>
+        <button class="icon-btn" id="closeHelpModalBtn" aria-label="Yopish">✕</button>
+      </div>
+      <div class="help-content">
+        <p><strong>1. Admin muzlatish:</strong> «Adminlar» bo‘limida istalgan adminni vaqtinchalik muzlatish yoki qayta faollashtirish mumkin.</p>
+        <p><strong>2. Shaxsiy eslatmalar:</strong> Har bir admin o‘z profiliga alohida eslatma yozib, belgilab qo‘ya oladi.</p>
+        <p><strong>3. Kunlik admin hisoboti:</strong> Kim nechta muammo o‘qiganini, izoh qoldirganini va yopganini ko‘ring.</p>
+        <p><strong>4. Joylashuv nazorati:</strong> Sozlamalarda bo‘limlar tartibini boshqaring va «Joylashuvni qulflash» orqali mahkamlang.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="primary-btn" id="closeHelpOkBtn">Tushunarli</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast hidden" id="toastBox" role="status" aria-live="polite"></div>
+
+  <script src="app-v5.js"></script>
+</body>
+</html>
