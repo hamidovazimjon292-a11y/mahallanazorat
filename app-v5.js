@@ -1,20 +1,57 @@
-const STORAGE_KEY = "mahalla_nazorat_state_v5";
+const STORAGE_KEY = "mahalla_nazorat_state_v5_sirdaryo_admin_guard";
+const ADMIN_ACCESS_CODE = "55555";
 const STAGES = ["Yangi", "O‘rganilmoqda", "Brigada yuborildi", "Hal qilindi"];
 const CATEGORIES = ["Suv", "Elektr", "Yo‘l", "Gaz", "Yoritish"];
+const BRIGADES = [
+  "1-Brigada (Suv Ta’minoti)",
+  "2-Brigada (Elektr Tarmoqlari)",
+  "3-Brigada (Hududgaz Sirdaryo)",
+  "4-Brigada (Yo‘l & Yoritish)",
+  "Viloyat Navbatchi Guruhi"
+];
+const SLA_OPTIONS = [2, 4, 12, 24, 48];
+const WEATHER_CONDITIONS = ["Oddiy sharoit", "Tungi ish vaqti", "Ob-havo ta’siri"];
+const NOTIFY_TARGETS = [
+  { key: "mahallaChair", label: "Mahalla raisi" },
+  { key: "districtDisp", label: "Tuman dispetcheri" },
+  { key: "brigadeLead", label: "Brigada boshlig‘i" }
+];
+const SAFETY_CHECKS = [
+  { key: "areaDisconnected", label: "Hudud o‘chirilganmi?" },
+  { key: "citizensNotified", label: "Aholi ogohlantirildimi?" },
+  { key: "emergencyContacted", label: "Avariya xizmati bilan bog‘lanildimi?" }
+];
+
+const SIRDARYO_DISTRICTS = [
+  "Guliston sh.",
+  "Yangiyer sh.",
+  "Shirin sh.",
+  "Boyovut",
+  "Guliston tumani",
+  "Mirzaobod",
+  "Oqoltin",
+  "Sardoba",
+  "Sayxunobod",
+  "Sirdaryo tumani",
+  "Xovos"
+];
 
 const DEFAULT_SECTION_ORDER = [
   { id: "actionBar", label: "Qidiruv va amallar paneli" },
   { id: "kpiGrid", label: "Umumiy statistika kartochkalari" },
   { id: "workspaceGrid", label: "Asosiy ish maydoni (Muammolar & Xarita)" },
-  { id: "adminsSection", label: "Adminlar va Nazoratchilar boshqaruvi" },
-  { id: "adminNotesReportSection", label: "Shaxsiy Eslatmalar va Kunlik Admin Hisoboti" },
+  { id: "adminsSection", label: "Admin Panel (Bosh Admin / O‘quvchi Admin)" },
+  { id: "adminNotesReportSection", label: "Shaxsiy Eslatmalar, Kunlik Hisobot va Smena Topshirish" },
   { id: "dutyPlanSection", label: "Haftalik Navbatchilik va Reja" },
   { id: "beforeAfterSection", label: "Oldin / Keyin galereyasi" },
   { id: "hotlinesSection", label: "Tezkor kontaktlar ma’lumotnomasi" },
   { id: "bottomGrid", label: "Mahallalar va Sozlamalar" }
 ];
 
+const HOUR_MS = 3600 * 1000;
+
 const DEFAULT_STATE = {
+  isAuthenticated: false,
   theme: "light",
   lang: "uz",
   fontScale: 1,
@@ -24,6 +61,11 @@ const DEFAULT_STATE = {
   workspaceMode: "split",
   sectionOrder: DEFAULT_SECTION_ORDER.map((s) => s.id),
   currentAdminId: "adm-1",
+  shiftHandover: {
+    note: "Xovos va Guliston yo‘nalishidagi shoshilinch murojaatlar hamda yo‘ldagi brigadalar aloqasini nazoratda saqlang.",
+    by: "Hamdov A.",
+    updatedAt: "Bugun, 18:00"
+  },
   admins: [
     {
       id: "adm-1",
@@ -31,7 +73,7 @@ const DEFAULT_STATE = {
       initials: "HA",
       phone: "+998 90 100-00-01",
       district: "Barcha tumanlar",
-      role: "Katta Admin (To‘liq boshqaruv)",
+      role: "Bosh Admin",
       frozen: false,
       isSuper: true,
       commentsCount: 2,
@@ -39,37 +81,50 @@ const DEFAULT_STATE = {
     },
     {
       id: "adm-2",
-      name: "Dilnoza R.",
-      initials: "DR",
-      phone: "+998 90 234-56-78",
-      district: "Chilonzor",
-      role: "Admin (O‘qish & Nazorat)",
+      name: "Hamidov A.",
+      initials: "HA",
+      phone: "+998 90 100-00-02",
+      district: "Guliston sh.",
+      role: "O‘quvchi Admin",
       frozen: false,
       isSuper: false,
       commentsCount: 1,
+      resolvedCount: 0
+    },
+    {
+      id: "adm-3",
+      name: "Odilbek R.",
+      initials: "OR",
+      phone: "+998 91 555-22-11",
+      district: "Guliston sh.",
+      role: "Oddiy foydalanuvchi",
+      frozen: false,
+      isSuper: false,
+      commentsCount: 0,
       resolvedCount: 0
     }
   ],
   personalNotes: {
     "adm-1": [
-      { id: "n-1", text: "Yunusobod suv quvuri hisobotini tekshirish", done: false },
-      { id: "n-2", text: "Haftalik navbatchilik jadvalini tasdiqlash", done: true }
+      { id: "n-1", text: "Guliston shahri Bahor MFY suv quvuri hisobotini tekshirish", done: false },
+      { id: "n-2", text: "Sirdaryo viloyati haftalik navbatchilik jadvalini tasdiqlash", done: true }
     ],
     "adm-2": [
-      { id: "n-3", text: "Chilonzor 6-mavze murojaatlarini ko‘rib chiqish", done: false }
-    ]
+      { id: "n-3", text: "Yangiyer shahri transformator murojaatlarini ko‘rib chiqish", done: false }
+    ],
+    "adm-3": []
   },
   dutySchedule: [
-    { day: "Dushanba", team: "1-Brigada (Suv & Kanalizatsiya)", shift: "08:00 – 20:00", lead: "Olimjon K." },
-    { day: "Seshanba", team: "2-Brigada (Elektr & Yoritish)", shift: "08:00 – 20:00", lead: "Javohir T." },
-    { day: "Chorshanba", team: "3-Brigada (Gaz & Isitish)", shift: "08:00 – 20:00", lead: "Dilnoza R." },
-    { day: "Payshanba", team: "4-Brigada (Yo‘l & Obodonlashtirish)", shift: "08:00 – 20:00", lead: "Madina N." },
-    { day: "Juma–Yakshanba", team: "Navbatchi Nazorat Guruhi", shift: "24/7 Navbatchilik", lead: "Hamdov A." }
+    { day: "Dushanba", team: "1-Brigada (Sirdaryo Suv Ta’minoti)", shift: "08:00 – 20:00", lead: "Olimjon K." },
+    { day: "Seshanba", team: "2-Brigada (Sirdaryo Elektr Tarmoqlari)", shift: "08:00 – 20:00", lead: "Javohir T." },
+    { day: "Chorshanba", team: "3-Brigada (Hududgaz Sirdaryo)", shift: "08:00 – 20:00", lead: "Hamidov A." },
+    { day: "Payshanba", team: "4-Brigada (Viloyat Yo‘l & Obodonlashtirish)", shift: "08:00 – 20:00", lead: "Madina N." },
+    { day: "Juma–Yakshanba", team: "Viloyat Navbatchi Nazorat Guruhi", shift: "24/7 Navbatchilik", lead: "Hamdov A." }
   ],
   planTasks: [
-    { id: "t-1", text: "Yunusobod 4-mavze suv quvuri holatini qayta tekshirish", assignee: "Hamdov A.", done: true },
-    { id: "t-2", text: "Chilonzor 6-mavze transformator yuklamasini o‘lchash", assignee: "Dilnoza R.", done: false },
-    { id: "t-3", text: "Uchtepa Foziltepa ko‘chasi yoritish ustunlari bo‘yicha hisobot", assignee: "Hamdov A.", done: false }
+    { id: "t-1", text: "Guliston sh. Taraqqiyot MFY suv quvuri holatini qayta tekshirish", assignee: "Hamdov A.", done: true },
+    { id: "t-2", text: "Yangiyer sh. Binokor MFY transformator yuklamasini o‘lchash", assignee: "Hamidov A.", done: false },
+    { id: "t-3", text: "Boyovut tumani markaziy ko‘chasi yoritish ustunlari hisoboti", assignee: "Hamdov A.", done: false }
   ],
   selectedCategory: "all",
   selectedDistrict: "all",
@@ -82,15 +137,15 @@ const DEFAULT_STATE = {
   searchQuery: "",
   activeMapPinId: "W-104",
   notifications: [
-    { id: 1, text: "Yunusobod 4-mavzeda #W-104 suv quvuri bo‘yicha brigada safarbar etildi.", read: false },
-    { id: 2, text: "Chilonzor 6-mavze #E-802 transformator muammosiga yangi ovozlar qo‘shildi.", read: false },
-    { id: 3, text: "Yakkasaroyda gaz regulyatori sozlanib, Oldin/Keyin galereyasiga kiritildi.", read: false }
+    { id: 1, text: "Guliston sh. Taraqqiyot MFYda #W-104 suv quvuri bo‘yicha 1-Brigada safarbar etildi (SLA: 4 soat).", read: false },
+    { id: 2, text: "Yangiyer sh. #E-802 transformator muammosiga yangi ovozlar qo‘shildi.", read: false },
+    { id: 3, text: "Xovos tumanida gaz regulyatori sozlanib, Oldin/Keyin galereyasiga kiritildi.", read: false }
   ],
   hotlines: [
     {
       id: "h-suv",
       category: "Suv",
-      title: "Shahar Suv Ta’minoti Avariya Xizmati",
+      title: "Sirdaryo Suv Ta’minoti Avariya Xizmati",
       phone: "1055",
       avgResponse: "~25 daqiqa",
       schedule: "24/7 Navbatchilik",
@@ -99,7 +154,7 @@ const DEFAULT_STATE = {
     {
       id: "h-elektr",
       category: "Elektr",
-      title: "Hududiy Elektr Tarmoqlari Dispetcherligi",
+      title: "Sirdaryo Hududiy Elektr Tarmoqlari Dispetcherligi",
       phone: "1154",
       avgResponse: "~30 daqiqa",
       schedule: "24/7 Navbatchilik",
@@ -108,7 +163,7 @@ const DEFAULT_STATE = {
     {
       id: "h-gaz",
       category: "Gaz",
-      title: "Hududgaz Avariya va Xavfsizlik Xizmati",
+      title: "Hududgaz Sirdaryo Avariya va Xavfsizlik Xizmati",
       phone: "104",
       avgResponse: "~15 daqiqa",
       schedule: "24/7 Navbatchilik",
@@ -117,8 +172,8 @@ const DEFAULT_STATE = {
     {
       id: "h-yol",
       category: "Yo‘l",
-      title: "Obodonlashtirish va Yo‘l Nazorati Markazi",
-      phone: "+998 71 234-18-09",
+      title: "Sirdaryo Viloyati Obodonlashtirish va Yo‘l Nazorati",
+      phone: "+998 67 225-18-09",
       avgResponse: "~2 soat",
       schedule: "08:00 – 22:00",
       note: "Asfalt cho‘kishi, chuqurliklar va drenaj tozalash"
@@ -126,8 +181,8 @@ const DEFAULT_STATE = {
     {
       id: "h-yoritish",
       category: "Yoritish",
-      title: "Shahar Ko‘cha Yoritish Xizmati",
-      phone: "+998 71 240-55-12",
+      title: "Guliston va Tumanlar Ko‘cha Yoritish Xizmati",
+      phone: "+998 67 225-55-12",
       avgResponse: "~1.5 soat",
       schedule: "08:00 – 23:00",
       note: "Ko‘cha chiroqlari va yoritish ustunlarini tiklash"
@@ -135,51 +190,51 @@ const DEFAULT_STATE = {
     {
       id: "h-mahalla",
       category: "Yo‘l",
-      title: "Mahalla Infratuzilma Muvofiqlashtirish Markazi",
+      title: "Sirdaryo Mahalla Infratuzilma Muvofiqlashtirish Markazi",
       phone: "1092",
       avgResponse: "~45 daqiqa",
       schedule: "09:00 – 21:00",
-      note: "Jamoatchilik murojaatlari va mahalla nazorati"
+      note: "Viloyat bo‘yicha jamoatchilik murojaatlari nazorati"
     }
   ],
   beforeAfterItems: [
     {
       id: "BA-201",
       title: "Gaz bosimi va taqsimlash tarmog‘ini barqarorlashtirish",
-      district: "Yakkasaroy",
+      district: "Xovos",
       category: "Gaz",
       date: "18-Noyabr, 2026",
-      service: "Hududgaz Toshkent",
+      service: "Hududgaz Sirdaryo",
       beforeText: "Kechki sovuq paytlarda gaz bosimi 35% gacha pasayib, isitish qozonlari o‘chib qolayotgan edi.",
-      afterText: "Gaz taqsimlash punkti tekshirildi, filtr va regulyator almashtirildi, bosim to‘liq me’yorga qaytdi."
+      afterText: "Xovos tumani gaz taqsimlash punkti tekshirildi, regulyator almashtirildi, bosim me’yorga qaytdi."
     },
     {
       id: "BA-198",
       title: "Mahalla ichki yo‘li va piyodalar yo‘lagini tekislash",
-      district: "Mirzo Ulug‘bek",
+      district: "Sirdaryo tumani",
       category: "Yo‘l",
       date: "14-Noyabr, 2026",
-      service: "Obodonlashtirish boshqarmasi",
+      service: "Sirdaryo Obodonlashtirish boshqarmasi",
       beforeText: "Yo‘l qoplamasida chuqur o‘ra paydo bo‘lib, yomg‘irdan keyin piyodalar o‘tishiga qiyinchilik tug‘dirgan.",
       afterText: "Asfalt qoplamasi yangilandi, yo‘l cheti mustahkamlandi va suv oqib ketishi yo‘lga qo‘yildi."
     },
     {
       id: "BA-192",
       title: "Maktab yonidagi ko‘cha yoritish liniyasini tiklash",
-      district: "Chilonzor",
+      district: "Shirin sh.",
       category: "Yoritish",
       date: "09-Noyabr, 2026",
-      service: "Shahar Yoritish Xizmati",
+      service: "Shirin Shahar Yoritish Xizmati",
       beforeText: "6 ta yoritish chirog‘i ishlamay, qorong‘i vaqtlarda maktab o‘quvchilari va aholi uchun xavf tug‘dirgan.",
       afterText: "Barcha LED chiroqlar va boshqaruv kabellari yangilandi, tungi yoritish to‘liq ishga tushdi."
     },
     {
       id: "BA-187",
-      title: "Ichimlik suvi jo‘mragi va quvur ulanmasini almashtirish",
-      district: "Yunusobod",
+      title: "Ichimlik suvi quvuri ulanmasini almashtirish",
+      district: "Guliston sh.",
       category: "Suv",
       date: "03-Noyabr, 2026",
-      service: "Toshkent Shahar Suv Ta’minoti",
+      service: "Sirdaryo Suv Ta’minoti",
       beforeText: "Eski ulanmadan doimiy suv sizib, ko‘p qavatli uy yerto‘lasiga namlik o‘tayotgan edi.",
       afterText: "Zamonaviy mufta va germetik ulanma o‘rnatildi, hudud quritilib nazoratga olindi."
     }
@@ -190,113 +245,343 @@ const DEFAULT_STATE = {
       title: "Suv quvuri yorilishi",
       category: "Suv",
       visualTag: "💧 Quvur / Suv tarmog‘i",
-      district: "Yunusobod",
-      address: "Yunusobod 4-mavze, 12-uy ro‘parasi",
+      district: "Guliston sh.",
+      address: "Taraqqiyot MFY, 12-uy ro‘parasi",
       priority: "Juda Shoshilinch",
       status: "O‘rganilmoqda",
-      service: "Toshkent Shahar Suv Ta’minoti",
-      timeAgo: "30 daqiqa oldin",
+      brigade: "1-Brigada (Suv Ta’minoti)",
+      assignee: "Olimjon K.",
+      slaHours: 4,
+      createdAt: Date.now() - 3.3 * HOUR_MS,
+      conditionTag: "Ob-havo ta’siri",
+      notified: { mahallaChair: true, districtDisp: true, brigadeLead: false },
+      safetyCheck: { areaDisconnected: false, citizensNotified: false, emergencyContacted: false },
+      service: "Sirdaryo Suv Ta’minoti",
+      timeAgo: "3.3 soat oldin",
       votes: 38,
       voted: false,
-      x: 56,
-      y: 26,
+      x: 52,
+      y: 44,
       readBy: ["adm-1"],
       description: "Ichimlik suvi quvuridan bosim bilan suv oqib, yo‘l chetini yuvib ketmoqda.",
-      comments: [
-        { author: "Mahalla raisi", text: "Avariya xizmatiga xabar berildi, mutaxassislar yo‘lda." }
-      ]
+      comments: [{ author: "Mahalla raisi", text: "Avariya xizmatiga xabar berildi, 1-Brigada yo‘lda." }]
     },
     {
       id: "E-802",
       title: "Transformator nosozligi",
       category: "Elektr",
       visualTag: "⚡ Transformator / Kabel",
-      district: "Chilonzor",
-      address: "Chilonzor 6-mavze, 8-ko‘p qavatli uy yonida",
+      district: "Yangiyer sh.",
+      address: "Binokor MFY, 8-ko‘p qavatli uy yonida",
       priority: "Muhim",
       status: "Brigada yuborildi",
-      service: "Hududiy Elektr Tarmoqlari",
-      timeAgo: "1 soat oldin",
+      brigade: "2-Brigada (Elektr Tarmoqlari)",
+      assignee: "Javohir T.",
+      slaHours: 12,
+      createdAt: Date.now() - 2 * HOUR_MS,
+      conditionTag: "Tungi ish vaqti",
+      notified: { mahallaChair: true, districtDisp: true, brigadeLead: true },
+      safetyCheck: { areaDisconnected: true, citizensNotified: true, emergencyContacted: true },
+      service: "Sirdaryo Hududiy Elektr Tarmoqlari",
+      timeAgo: "2 soat oldin",
       votes: 52,
       voted: true,
-      x: 32,
-      y: 66,
+      x: 68,
+      y: 72,
       readBy: ["adm-1", "adm-2"],
       description: "Kechki paytdan beri bir nechta xonadonda kuchlanish past bo‘lib, vaqti-vaqti bilan o‘chmoqda.",
-      comments: [
-        { author: "Navbatchi dispetcher", text: "Brigada 20 daqiqa ichida manzilga yetib boradi." }
-      ]
-    },
-    {
-      id: "I-059",
-      title: "Yo‘ldagi chuqurlik va asfalt cho‘kishi",
-      category: "Yo‘l",
-      visualTag: "🛣️ Yo‘l qoplamasi / Chuqurlik",
-      district: "Mirzo Ulug‘bek",
-      address: "Qori Niyoziy ko‘chasi, maktab yaqinida",
-      priority: "O‘rtacha",
-      status: "Yangi",
-      service: "Obodonlashtirish boshqarmasi",
-      timeAgo: "2 soat oldin",
-      votes: 24,
-      voted: false,
-      x: 74,
-      y: 44,
-      readBy: [],
-      description: "Piyodalar o‘tish joyi yaqinida asfalt cho‘kkan, yomg‘irda suv to‘planmoqda.",
-      comments: []
-    },
-    {
-      id: "L-311",
-      title: "Tungi yoritish ustunlari ishlamayapti",
-      category: "Yoritish",
-      visualTag: "💡 Ko‘cha yoritish ustuni",
-      district: "Uchtepa",
-      address: "Foziltepa ko‘chasi, bog‘cha yo‘lagi",
-      priority: "Muhim",
-      status: "Yangi",
-      service: "Shahar Yoritish Xizmati",
-      timeAgo: "3 soat oldin",
-      votes: 19,
-      voted: false,
-      x: 24,
-      y: 48,
-      readBy: [],
-      description: "Ketma-ket 4 ta yoritish ustuni kechasi yonmayapti, o‘quvchilar qorong‘ida qaytmoqda.",
-      comments: []
+      comments: [{ author: "Navbatchi dispetcher", text: "2-Brigada manzilga yetib bordi, yuklama tekshirilmoqda." }]
     },
     {
       id: "G-215",
       title: "Gaz bosimi pasayishi tekshiruvi",
       category: "Gaz",
       visualTag: "🔥 Gaz quvuri / Bosim",
-      district: "Yakkasaroy",
-      address: "Bobur ko‘chasi, 44-uy atrofida",
+      district: "Xovos",
+      address: "Qahramon MFY, 44-uy atrofida",
       priority: "Juda Shoshilinch",
       status: "Hal qilindi",
-      service: "Hududgaz Toshkent",
+      brigade: "3-Brigada (Hududgaz Sirdaryo)",
+      assignee: "Hamidov A.",
+      slaHours: 4,
+      createdAt: Date.now() - 26 * HOUR_MS,
+      conditionTag: "Ob-havo ta’siri",
+      notified: { mahallaChair: true, districtDisp: true, brigadeLead: true },
+      safetyCheck: { areaDisconnected: true, citizensNotified: true, emergencyContacted: true },
+      service: "Hududgaz Sirdaryo",
       timeAgo: "Kecha",
       votes: 45,
       voted: false,
-      x: 48,
-      y: 54,
+      x: 58,
+      y: 82,
       readBy: ["adm-1", "adm-2"],
-      description: "Isitish mavsumida gaz bosimini me’yorga keltirish bo‘yicha murojaat ijobiy yakunlandi.",
-      comments: [
-        { author: "Nazoratchi", text: "Regulyator sozlandi, bosim barqarorlashdi." }
-      ]
+      description: "Sovuq havoda gaz bosimi pasayishini bartaraf etish bo‘yicha murojaat ijobiy yakunlandi.",
+      comments: [{ author: "Nazoratchi", text: "3-Brigada regulyatorni sozladi, bosim barqarorlashdi." }]
     }
   ],
   mahallas: [
-    { name: "Yunusobod — Bog‘ishamol", lead: "Olimjon Karimov", phone: "+998 90 123-45-67" },
-    { name: "Chilonzor — Katta Qozirabod", lead: "Dilnoza Rustamova", phone: "+998 90 234-56-78" },
-    { name: "Mirzo Ulug‘bek — Lashkarbegi", lead: "Javohir Tursunov", phone: "+998 91 345-67-89" },
-    { name: "Uchtepa — Foziltepa", lead: "Madina Nazarova", phone: "+998 93 456-78-90" }
+    { district: "Guliston sh.", name: "Guliston sh. — Taraqqiyot MFY", lead: "Hamidov A.", phone: "+998 90 100-00-02" },
+    { district: "Yangiyer sh.", name: "Yangiyer sh. — Binokor MFY", lead: "Olimjon Karimov", phone: "+998 90 123-45-67" },
+    { district: "Shirin sh.", name: "Shirin sh. — Farhod MFY", lead: "Dilshod Rahimov", phone: "+998 91 210-33-44" },
+    { district: "Boyovut", name: "Boyovut — Navbahor MFY", lead: "Javohir Tursunov", phone: "+998 91 345-67-89" },
+    { district: "Guliston tumani", name: "Guliston tumani — Dehqonobod MFY", lead: "Sardor Alimov", phone: "+998 93 311-22-33" },
+    { district: "Mirzaobod", name: "Mirzaobod — Navro‘z MFY", lead: "Aziza Qodirova", phone: "+998 94 412-55-66" },
+    { district: "Oqoltin", name: "Oqoltin — Sardoba MFY", lead: "Behzod Xolmatov", phone: "+998 90 515-77-88" },
+    { district: "Sardoba", name: "Sardoba — Do‘stlik MFY", lead: "Madina Nazarova", phone: "+998 93 456-78-90" },
+    { district: "Sayxunobod", name: "Sayxunobod — Ittifoq MFY", lead: "Rustam Sobirov", phone: "+998 91 616-88-99" },
+    { district: "Sirdaryo tumani", name: "Sirdaryo tumani — Baxt MFY", lead: "Kamola Usmonova", phone: "+998 97 717-99-00" },
+    { district: "Xovos", name: "Xovos — Qahramon MFY", lead: "Akmal Jo‘rayev", phone: "+998 99 818-12-34" }
   ]
 };
 
 let state = loadState();
 let currentDetailIssueId = null;
+
+function getCurrentAdmin() {
+  return state.admins.find((a) => a.id === state.currentAdminId) || state.admins[0];
+}
+
+function hasAdminPanelAccess(user = getCurrentAdmin()) {
+  if (!user) return false;
+  if (user.isSuper) return true;
+  const roleText = String(user.role || "").toLowerCase();
+  return (
+    roleText.includes("bosh admin") ||
+    roleText.includes("katta admin") ||
+    roleText.includes("o‘quvchi admin") ||
+    roleText.includes("oquvchi admin") ||
+    roleText.startsWith("admin")
+  );
+}
+
+function applyAdminVisibilityGuard() {
+  const canOpenAdminPanel = hasAdminPanelAccess();
+  const adminsSec = document.getElementById("adminsSection");
+  const adminNavBtn = document.querySelector('.nav-item[data-view="admins"]');
+
+  if (adminsSec) {
+    adminsSec.classList.toggle("hidden", !canOpenAdminPanel);
+  }
+  if (adminNavBtn) {
+    adminNavBtn.classList.toggle("hidden", !canOpenAdminPanel);
+  }
+  if (!canOpenAdminPanel) {
+    document.getElementById("adminPanelModal")?.classList.add("hidden");
+  }
+}
+
+function openAdminPanelModal() {
+  const curUser = getCurrentAdmin();
+  if (!hasAdminPanelAccess(curUser)) {
+    showToast("⛔ Bu bo‘lim faqat Bosh Admin yoki O‘quvchi Admin uchun!");
+    return;
+  }
+  if (curUser?.frozen) {
+    showToast("❄️ Profil muzlatilgan. Avval faollashtiring.");
+    return;
+  }
+
+  const totalIssues = state.issues.length;
+  const urgentOpen = state.issues.filter(
+    (i) => i.priority === "Juda Shoshilinch" && i.status !== "Hal qilindi"
+  ).length;
+  const activeAdmins = state.admins.filter((a) => !a.frozen).length;
+
+  document.getElementById("adminPanelModalTitle").textContent = `Admin Panel • ${curUser.name} (${curUser.role})`;
+  document.getElementById("adminPanelModalBody").innerHTML = `
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+      <span class="code-pill">Rol: ${escapeHtml(curUser.role)}</span>
+      <span class="code-pill">Hudud: ${escapeHtml(curUser.district)}</span>
+      <span class="code-pill">Jami murojaat: ${totalIssues} ta</span>
+      <span class="code-pill priority-shoshilinch">Shoshilinch ochiq: ${urgentOpen} ta</span>
+      <span class="code-pill">Faol profillar: ${activeAdmins}/${state.admins.length}</span>
+    </div>
+    <p><strong>Ruxsat holati:</strong> Sizga <strong>Admin Panel</strong> (foydalanuvchilar, rollar, holatlar va nazorat) uchun to‘liq kirish berilgan. Oddiy foydalanuvchilar ushbu oynani va admin bo‘limini ko‘ra olmaydi.</p>
+    <div class="comment-list">
+      ${state.admins
+        .map(
+          (adm) => `
+          <div class="comment-item">
+            <strong>${escapeHtml(adm.name)}</strong> — <span class="code-pill">${escapeHtml(adm.role)}</span>
+            <span class="muted-text">(${escapeHtml(adm.district)} • ${adm.frozen ? "❄️ Muzlatilgan" : "✓ Faol"})</span>
+          </div>
+        `
+        )
+        .join("")}
+    </div>
+  `;
+
+  document.getElementById("adminPanelModal").classList.remove("hidden");
+}
+
+function isSafetyRequired(item) {
+  return item.category === "Gaz" || item.category === "Elektr";
+}
+
+function getSafetyDoneCount(item) {
+  const sc = item.safetyCheck || {};
+  return SAFETY_CHECKS.filter((c) => Boolean(sc[c.key])).length;
+}
+
+function formatConditionBadge(conditionTag) {
+  if (conditionTag === "Tungi ish vaqti") return "🌙 Tungi ish vaqti";
+  if (conditionTag === "Ob-havo ta’siri") return "🌧️❄️ Ob-havo ta’siri";
+  return "☀️ Oddiy sharoit";
+}
+
+function getNotifiedCount(item) {
+  const n = item.notified || {};
+  return NOTIFY_TARGETS.filter((t) => Boolean(n[t.key])).length;
+}
+
+function getAssigneeOptions(currentAssignee) {
+  const names = [...state.admins.map((a) => a.name), "Olimjon K.", "Javohir T.", "Madina N."];
+  if (currentAssignee && !names.includes(currentAssignee)) names.unshift(currentAssignee);
+  return [...new Set(names)];
+}
+
+function getSlaInfo(item) {
+  const slaHours = Number(item.slaHours) || 24;
+  const createdAt = Number(item.createdAt) || Date.now();
+  const remainingHours = slaHours - (Date.now() - createdAt) / HOUR_MS;
+
+  if (item.status === "Hal qilindi") {
+    return { slaHours, remainingHours, isAlert: false, label: `SLA ${slaHours}s • Hal qilindi`, badgeClass: "sla-ok" };
+  }
+  if (remainingHours < 0) {
+    return {
+      slaHours,
+      remainingHours,
+      isAlert: true,
+      label: `SLA ${slaHours}s • ${Math.abs(remainingHours).toFixed(1)}s o‘tdi`,
+      badgeClass: "sla-overdue"
+    };
+  }
+  if (remainingHours <= Math.max(1, slaHours * 0.25)) {
+    return {
+      slaHours,
+      remainingHours,
+      isAlert: true,
+      label: `SLA ${slaHours}s • ${remainingHours.toFixed(1)}s qoldi`,
+      badgeClass: "sla-warning"
+    };
+  }
+  return {
+    slaHours,
+    remainingHours,
+    isAlert: false,
+    label: `SLA ${slaHours}s • ${remainingHours.toFixed(1)}s qoldi`,
+    badgeClass: "sla-normal"
+  };
+}
+
+function buildHandoverSummaryText() {
+  const openUrgent = state.issues.filter((i) => i.priority === "Juda Shoshilinch" && i.status !== "Hal qilindi");
+  const enRouteBrigades = [
+    ...new Set(
+      state.issues
+        .filter((i) => i.status === "Brigada yuborildi" && i.brigade)
+        .map((i) => `${i.brigade} (#${i.id} ${i.district})`)
+    )
+  ];
+  const urgentText = openUrgent.length
+    ? openUrgent.map((i) => `#${i.id} ${i.title} (${i.district})`).join(", ")
+    : "Yo‘q";
+  const brigadeText = enRouteBrigades.length ? enRouteBrigades.join("; ") : "Safarbar etilgan brigada yo‘q";
+  const ho = state.shiftHandover || {};
+
+  return {
+    autoLine: `Yopilmagan shoshilinch (${openUrgent.length}): ${urgentText} | Yo‘ldagi brigadalar: ${brigadeText}.`,
+    fullCopy: [
+      "SMENA TOPSHIRISH XULOSASI (SIRDARYO)",
+      `Yopilmagan shoshilinch murojaatlar (${openUrgent.length}): ${urgentText}`,
+      `Yo‘ldagi brigadalar: ${brigadeText}`,
+      `E’tibor qaratish kerak: ${ho.note || "—"}`,
+      `Topshiruvchi: ${ho.by || "—"} (${ho.updatedAt || ""})`
+    ].join("\n")
+  };
+}
+
+function makeInitials(fullName) {
+  const parts = fullName.trim().split(/\s+/);
+  return (
+    parts
+      .slice(0, 2)
+      .map((p) => p[0]?.toUpperCase() || "")
+      .join("") || "PR"
+  );
+}
+
+function loginUserByName(rawName, district = "Barcha tumanlar", phone = "", roleChoice = "Oddiy foydalanuvchi", adminCode = "") {
+  const cleanName = rawName.trim();
+  if (!cleanName) return;
+
+  const wantsAdmin =
+    roleChoice === "Bosh Admin" || roleChoice === "O‘quvchi Admin";
+
+  if (wantsAdmin && adminCode.trim() !== ADMIN_ACCESS_CODE) {
+    showToast(`⛔ Admin kodi noto‘g‘ri! Admin rolida kirish kodi: ${ADMIN_ACCESS_CODE}`);
+    return;
+  }
+
+  let user = state.admins.find((a) => a.name.toLowerCase() === cleanName.toLowerCase());
+
+  if (!user) {
+    const newId = `adm-${Date.now()}`;
+    user = {
+      id: newId,
+      name: cleanName,
+      initials: makeInitials(cleanName),
+      phone: phone.trim() || "Ko‘rsatilmagan",
+      district: district || "Barcha tumanlar",
+      role: roleChoice,
+      frozen: false,
+      isSuper: roleChoice === "Bosh Admin",
+      commentsCount: 0,
+      resolvedCount: 0
+    };
+    state.admins.push(user);
+    state.personalNotes[newId] = [];
+  } else {
+    if (phone.trim()) user.phone = phone.trim();
+    if (roleChoice) {
+      user.role = roleChoice;
+      user.isSuper = roleChoice === "Bosh Admin";
+    }
+  }
+
+  state.currentAdminId = user.id;
+  state.isAuthenticated = true;
+  renderAll();
+  showToast(`Xush kelibsiz, ${user.name} (${user.role})!`);
+}
+
+function renderAuthScreen() {
+  const overlay = document.getElementById("authOverlay");
+  const appShell = document.getElementById("appShell");
+
+  if (state.isAuthenticated) {
+    overlay.classList.add("hidden");
+    appShell.classList.remove("hidden");
+    return;
+  }
+
+  overlay.classList.remove("hidden");
+  appShell.classList.add("hidden");
+
+  const quickList = document.getElementById("quickAccountsList");
+  if (quickList) {
+    quickList.innerHTML = state.admins
+      .map(
+        (adm) => `
+        <button type="button" class="quick-acc-chip" data-quick-login-id="${adm.id}">
+          👤 ${escapeHtml(adm.name)} (${escapeHtml(adm.role)})
+        </button>
+      `
+      )
+      .join("");
+  }
+}
 
 function loadState() {
   try {
@@ -321,10 +606,6 @@ function saveState() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {}
-}
-
-function getCurrentAdmin() {
-  return state.admins.find((a) => a.id === state.currentAdminId) || state.admins[0];
 }
 
 function ensureAdminNotFrozen(actionLabel = "Amalni bajarish") {
@@ -398,9 +679,8 @@ function applyLayoutAndSettings() {
 
   if (curAdmin) {
     document.getElementById("currentUserName").textContent = curAdmin.name;
-    document.getElementById("currentUserAvatar").textContent = curAdmin.initials || "AD";
-    const statusLabel = curAdmin.frozen ? "Muzlatilgan" : curAdmin.role.split(" ")[0];
-    document.getElementById("currentUserRole").textContent = `${statusLabel} • ${curAdmin.district}`;
+    document.getElementById("currentUserAvatar").textContent = curAdmin.initials || "PR";
+    document.getElementById("currentUserRole").textContent = `${curAdmin.role} • ${curAdmin.district}`;
 
     statusPill.textContent = curAdmin.frozen ? "❄️ Muzlatilgan" : "✓ Faol";
     statusPill.classList.toggle("frozen-pill", Boolean(curAdmin.frozen));
@@ -409,6 +689,7 @@ function applyLayoutAndSettings() {
   }
 
   renderSectionOrderControls();
+  applyAdminVisibilityGuard();
 }
 
 function renderSectionOrderControls() {
@@ -454,6 +735,9 @@ function getFilteredIssues() {
       item.address.toLowerCase().includes(q) ||
       item.id.toLowerCase().includes(q) ||
       item.district.toLowerCase().includes(q) ||
+      (item.brigade || "").toLowerCase().includes(q) ||
+      (item.assignee || "").toLowerCase().includes(q) ||
+      (item.conditionTag || "").toLowerCase().includes(q) ||
       item.description.toLowerCase().includes(q);
 
     let matchPreset = true;
@@ -461,6 +745,10 @@ function getFilteredIssues() {
       matchPreset = item.priority === "Juda Shoshilinch";
     } else if (state.selectedPreset === "brigade") {
       matchPreset = item.status === "Brigada yuborildi";
+    } else if (state.selectedPreset === "sla_alert") {
+      matchPreset = getSlaInfo(item).isAlert;
+    } else if (state.selectedPreset === "weather_night") {
+      matchPreset = item.conditionTag === "Tungi ish vaqti" || item.conditionTag === "Ob-havo ta’siri";
     } else if (state.selectedPreset === "unread_admin") {
       matchPreset = !Array.isArray(item.readBy) || !item.readBy.includes(curAdmin?.id);
     }
@@ -472,14 +760,18 @@ function getFilteredIssues() {
     list.sort((a, b) => b.votes - a.votes);
   } else if (state.sortBy === "priority") {
     list.sort((a, b) => (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0));
+  } else if (state.sortBy === "sla") {
+    list.sort((a, b) => getSlaInfo(a).remainingHours - getSlaInfo(b).remainingHours);
   }
   return list;
 }
 
 function renderAll() {
+  renderAuthScreen();
   applyLayoutAndSettings();
   renderAdminSwitcherAndGrid();
   renderPersonalNotesAndDailyReport();
+  renderShiftHandover();
   renderKPIs();
   renderIssues();
   renderMap();
@@ -523,7 +815,7 @@ function renderAdminSwitcherAndGrid() {
   select.innerHTML = state.admins
     .map(
       (a) =>
-        `<option value="${a.id}" ${a.id === state.currentAdminId ? "selected" : ""}>${escapeHtml(a.name)}${
+        `<option value="${a.id}" ${a.id === state.currentAdminId ? "selected" : ""}>${escapeHtml(a.name)} • ${escapeHtml(a.role)}${
           a.frozen ? " [Muzlatilgan]" : ""
         }</option>`
     )
@@ -534,7 +826,14 @@ function renderAdminSwitcherAndGrid() {
     .map((a) => `<option value="${escapeHtml(a.name)}">${escapeHtml(a.name)}</option>`)
     .join("");
 
-  document.getElementById("adminCountChip").textContent = `${state.admins.length} ta admin`;
+  const issueAssigneeSelect = document.getElementById("issueAssignee");
+  if (issueAssigneeSelect) {
+    issueAssigneeSelect.innerHTML = getAssigneeOptions()
+      .map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`)
+      .join("");
+  }
+
+  document.getElementById("adminCountChip").textContent = `${state.admins.length} ta profil`;
 
   const totalIssues = state.issues.length;
   document.getElementById("adminsGrid").innerHTML = state.admins
@@ -582,40 +881,34 @@ function renderPersonalNotesAndDailyReport() {
   const curAdmin = getCurrentAdmin();
   if (!curAdmin) return;
 
-  if (!Array.isArray(state.personalNotes[curAdmin.id])) {
-    state.personalNotes[curAdmin.id] = [];
-  }
+  if (!Array.isArray(state.personalNotes[curAdmin.id])) state.personalNotes[curAdmin.id] = [];
   const notes = state.personalNotes[curAdmin.id];
 
   document.getElementById("notesOwnerLabel").textContent = curAdmin.name;
   document.getElementById("adminNotesCountChip").textContent = `${notes.length} ta eslatma`;
 
   const notesContainer = document.getElementById("personalNotesList");
-  if (notes.length === 0) {
-    notesContainer.innerHTML = `<div class="muted-text">Bu admin uchun hali shaxsiy eslatma yo‘q.</div>`;
-  } else {
-    notesContainer.innerHTML = notes
-      .map(
-        (n) => `
-        <div class="note-row ${n.done ? "done-note" : ""}">
-          <label class="task-left">
-            <input type="checkbox" class="note-toggle-chk" data-note-id="${n.id}" ${n.done ? "checked" : ""} />
-            <span class="note-text">${escapeHtml(n.text)}</span>
-          </label>
-          <button type="button" class="mini-btn del-note-btn" data-del-note="${n.id}">✕</button>
-        </div>
-      `
-      )
-      .join("");
-  }
+  notesContainer.innerHTML = notes.length
+    ? notes
+        .map(
+          (n) => `
+          <div class="note-row ${n.done ? "done-note" : ""}">
+            <label class="task-left">
+              <input type="checkbox" class="note-toggle-chk" data-note-id="${n.id}" ${n.done ? "checked" : ""} />
+              <span class="note-text">${escapeHtml(n.text)}</span>
+            </label>
+            <button type="button" class="mini-btn del-note-btn" data-del-note="${n.id}">✕</button>
+          </div>
+        `
+        )
+        .join("")
+    : `<div class="muted-text">${escapeHtml(curAdmin.name)} uchun hali shaxsiy eslatma yo‘q.</div>`;
 
-  // Kunlik admin hisoboti
-  const todayStr = new Date().toLocaleDateString("uz-UZ", {
+  document.getElementById("dailyReportDateLabel").textContent = new Date().toLocaleDateString("uz-UZ", {
     day: "2-digit",
     month: "long",
     year: "numeric"
   });
-  document.getElementById("dailyReportDateLabel").textContent = todayStr;
 
   const totalIssues = state.issues.length || 1;
   document.getElementById("dailyAdminReportList").innerHTML = state.admins
@@ -628,7 +921,7 @@ function renderPersonalNotesAndDailyReport() {
       return `
         <div class="daily-report-card">
           <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-            <strong>${escapeHtml(adm.name)}</strong>
+            <strong>${escapeHtml(adm.name)} (${escapeHtml(adm.role)})</strong>
             <span class="admin-status-pill ${adm.frozen ? "frozen-pill" : "active-pill"}">
               ${adm.frozen ? "Muzlatilgan" : "Faol"}
             </span>
@@ -643,6 +936,20 @@ function renderPersonalNotesAndDailyReport() {
       `;
     })
     .join("");
+}
+
+function renderShiftHandover() {
+  const summaryEl = document.getElementById("shiftAutoSummary");
+  const displayEl = document.getElementById("shiftSavedDisplay");
+  if (!summaryEl || !displayEl) return;
+
+  summaryEl.textContent = buildHandoverSummaryText().autoLine;
+  const ho = state.shiftHandover || {};
+  displayEl.innerHTML = `
+    <span class="report-tag">🔄 Smena topshiruv yozuvi</span>
+    <div style="margin-top:4px;"><strong>E’tibor berish kerak:</strong> ${escapeHtml(ho.note || "—")}</div>
+    <div class="muted-text" style="margin-top:2px;">Mas’ul: ${escapeHtml(ho.by || "—")} • ${escapeHtml(ho.updatedAt || "")}</div>
+  `;
 }
 
 function renderKPIs() {
@@ -692,8 +999,7 @@ function renderIssues() {
         <button class="secondary-btn" style="margin-top:10px" id="emptyResetBtn">Filtrlarni tozalash</button>
       </div>
     `;
-    const emptyBtn = document.getElementById("emptyResetBtn");
-    if (emptyBtn) emptyBtn.addEventListener("click", resetFilters);
+    document.getElementById("emptyResetBtn")?.addEventListener("click", resetFilters);
     return;
   }
 
@@ -701,6 +1007,14 @@ function renderIssues() {
     .map((item) => {
       const isRead = Array.isArray(item.readBy) && item.readBy.includes(curAdmin?.id);
       const readReadersCount = Array.isArray(item.readBy) ? item.readBy.length : 0;
+      const sla = getSlaInfo(item);
+      const assignees = getAssigneeOptions(item.assignee);
+      const notifiedCount = getNotifiedCount(item);
+      const notifObj = item.notified || {};
+      const showSafety = isSafetyRequired(item);
+      const safetyCount = getSafetyDoneCount(item);
+      const safetyObj = item.safetyCheck || {};
+
       return `
       <article class="issue-card ${!isRead ? "unread-by-admin" : ""}" data-id="${item.id}">
         <div class="issue-top">
@@ -709,18 +1023,91 @@ function renderIssues() {
               <span class="code-pill">#${item.id}</span>
               <span class="priority-badge ${getPriorityClass(item.priority)}">${item.priority}</span>
               <span class="code-pill">${item.category}</span>
+              <span class="code-pill ${sla.badgeClass}">⏱️ ${escapeHtml(sla.label)}</span>
+              <span class="code-pill">${escapeHtml(formatConditionBadge(item.conditionTag))}</span>
               ${item.visualTag ? `<span class="visual-tag-pill">${escapeHtml(item.visualTag)}</span>` : ""}
               <span class="read-status-pill ${isRead ? "is-read" : "is-unread"}">
                 ${isRead ? "✓ O‘qilgan" : "• Yangi (O‘qilmagan)"}
               </span>
             </div>
             <h3 class="issue-title">${escapeHtml(item.title)}</h3>
-            <div class="issue-location">📍 ${escapeHtml(item.district)} • ${escapeHtml(item.address)} • 🕒 ${escapeHtml(item.timeAgo)} • 👁️ ${readReadersCount} admin o‘qigan</div>
+            <div class="issue-location">📍 ${escapeHtml(item.district)} • ${escapeHtml(item.address)} • 🕒 ${escapeHtml(item.timeAgo)} • 👁️ ${readReadersCount} kishi o‘qigan</div>
           </div>
           <button class="mini-btn detail-open-btn" data-id="${item.id}">O‘qish &amp; Shkala</button>
         </div>
 
         <p class="issue-desc">${escapeHtml(item.description)}</p>
+
+        <div class="assignment-bar" style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:8px 0;">
+          <label class="muted-text" for="brigade-${item.id}">Brigada:</label>
+          <select class="select-control small-select" id="brigade-${item.id}" data-brigade-id="${item.id}">
+            ${BRIGADES.map(
+              (b) => `<option value="${escapeHtml(b)}" ${item.brigade === b ? "selected" : ""}>${escapeHtml(b)}</option>`
+            ).join("")}
+          </select>
+
+          <label class="muted-text" for="assignee-${item.id}">Javobgar:</label>
+          <select class="select-control small-select" id="assignee-${item.id}" data-assignee-id="${item.id}">
+            ${assignees.map(
+              (person) => `<option value="${escapeHtml(person)}" ${item.assignee === person ? "selected" : ""}>${escapeHtml(person)}</option>`
+            ).join("")}
+          </select>
+
+          <label class="muted-text" for="sla-${item.id}">SLA:</label>
+          <select class="select-control small-select" id="sla-${item.id}" data-sla-id="${item.id}">
+            ${SLA_OPTIONS.map(
+              (hrs) => `<option value="${hrs}" ${Number(item.slaHours) === hrs ? "selected" : ""}>${hrs} soat</option>`
+            ).join("")}
+          </select>
+
+          <label class="muted-text" for="cond-${item.id}">Sharoit:</label>
+          <select class="select-control small-select" id="cond-${item.id}" data-cond-id="${item.id}">
+            ${WEATHER_CONDITIONS.map(
+              (cond) => `<option value="${escapeHtml(cond)}" ${item.conditionTag === cond ? "selected" : ""}>${escapeHtml(formatConditionBadge(cond))}</option>`
+            ).join("")}
+          </select>
+        </div>
+
+        <div class="notify-bar" style="display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:6px 0;">
+          <span class="muted-text" style="font-size:0.8rem;">📢 Xabardor (${notifiedCount}/3):</span>
+          ${NOTIFY_TARGETS.map((t) => {
+            const active = Boolean(notifObj[t.key]);
+            return `
+              <button
+                type="button"
+                class="mini-btn ${active ? "active-toggle" : ""}"
+                data-notify-issue="${item.id}"
+                data-notify-key="${t.key}"
+              >
+                ${active ? "✓" : "+"} ${escapeHtml(t.label)}
+              </button>
+            `;
+          }).join("")}
+        </div>
+
+        ${
+          showSafety
+            ? `
+          <div class="safety-bar" style="display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:6px 0 10px; padding:8px; border-radius:8px; background:rgba(234,179,8,0.08);">
+            <span class="muted-text" style="font-size:0.8rem; font-weight:600;">⚠️ Xavfsizlik tekshiruvi (${safetyCount}/3):</span>
+            ${SAFETY_CHECKS.map((sc) => {
+              const checked = Boolean(safetyObj[sc.key]);
+              return `
+                <button
+                  type="button"
+                  class="mini-btn ${checked ? "active-toggle" : ""}"
+                  data-safety-issue="${item.id}"
+                  data-safety-key="${sc.key}"
+                >
+                  ${checked ? "✓" : "○"} ${escapeHtml(sc.label)}
+                </button>
+              `;
+            }).join("")}
+          </div>
+        `
+            : ""
+        }
+
         ${renderMiniTimeline(item.status)}
 
         <div class="issue-bottom">
@@ -759,11 +1146,7 @@ function renderMap() {
   pinsContainer.innerHTML = pinsToShow
     .map((item) => {
       const cls =
-        item.status === "Hal qilindi"
-          ? "resolved"
-          : item.priority === "Juda Shoshilinch"
-          ? "urgent"
-          : "";
+        item.status === "Hal qilindi" ? "resolved" : item.priority === "Juda Shoshilinch" ? "urgent" : "";
       const activeCls = item.id === state.activeMapPinId ? "active" : "";
       return `
         <button
@@ -784,12 +1167,16 @@ function renderMap() {
     return;
   }
 
+  const sla = getSlaInfo(selected);
+  const safetyLine = isSafetyRequired(selected) ? ` • ⚠️ Xavfsizlik: ${getSafetyDoneCount(selected)}/3` : "";
   infoBox.innerHTML = `
     <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:4px;">
       <strong>#${selected.id} — ${escapeHtml(selected.title)}</strong>
       <span class="priority-badge ${getPriorityClass(selected.priority)}">${selected.status}</span>
     </div>
     <div class="muted-text">${escapeHtml(selected.district)} • ${escapeHtml(selected.address)}</div>
+    <div class="muted-text" style="margin-top:4px;">🛠️ ${escapeHtml(selected.brigade || "Biriktirilmagan")} • 👤 ${escapeHtml(selected.assignee || "Belgilanmagan")} • ⏱️ ${escapeHtml(sla.label)}</div>
+    <div class="muted-text" style="margin-top:2px;">${escapeHtml(formatConditionBadge(selected.conditionTag))} • 📢 ${getNotifiedCount(selected)}/3 xabardor${escapeHtml(safetyLine)}</div>
     <div style="margin-top:8px; display:flex; gap:8px;">
       <button class="mini-btn detail-open-btn" data-id="${selected.id}">O‘qish &amp; izohlar (${selected.comments.length})</button>
     </div>
@@ -819,30 +1206,27 @@ function renderCategoryChart() {
 }
 
 function renderDistrictBars() {
-  const districts = ["Yunusobod", "Chilonzor", "Mirzo Ulug‘bek", "Uchtepa", "Yakkasaroy"];
   const maxCount = Math.max(
     1,
-    ...districts.map((d) => state.issues.filter((i) => i.district === d).length)
+    ...SIRDARYO_DISTRICTS.map((d) => state.issues.filter((i) => i.district === d).length)
   );
 
-  document.getElementById("districtBars").innerHTML = districts
-    .map((d) => {
-      const count = state.issues.filter((i) => i.district === d).length;
-      const pct = Math.round((count / maxCount) * 100);
-      const isSelected = state.selectedDistrict === d;
-      return `
-        <button class="district-row" data-district-filter="${d}">
-          <div class="district-row-top">
-            <span style="${isSelected ? "color:var(--primary); font-weight:700;" : ""}">${d}</span>
-            <span>${count} ta</span>
-          </div>
-          <div class="progress-track">
-            <div class="progress-fill" style="width:${pct}%;"></div>
-          </div>
-        </button>
-      `;
-    })
-    .join("");
+  document.getElementById("districtBars").innerHTML = SIRDARYO_DISTRICTS.map((d) => {
+    const count = state.issues.filter((i) => i.district === d).length;
+    const pct = Math.round((count / maxCount) * 100);
+    const isSelected = state.selectedDistrict === d;
+    return `
+      <button class="district-row" data-district-filter="${escapeHtml(d)}">
+        <div class="district-row-top">
+          <span style="${isSelected ? "color:var(--primary); font-weight:700;" : ""}">${escapeHtml(d)}</span>
+          <span>${count} ta</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" style="width:${pct}%;"></div>
+        </div>
+      </button>
+    `;
+  }).join("");
 }
 
 function renderReports() {
@@ -861,7 +1245,7 @@ function renderReports() {
       <div class="report-item">
         <span class="report-tag">✓ Hal qilindi</span>
         <div><strong>#${item.id} ${escapeHtml(item.title)}</strong></div>
-        <div class="muted-text">${escapeHtml(item.district)} • ${escapeHtml(item.service)}</div>
+        <div class="muted-text">${escapeHtml(item.district)} • ${escapeHtml(item.brigade || item.service)} • Javobgar: ${escapeHtml(item.assignee || "—")}</div>
       </div>
     `
     )
@@ -974,7 +1358,7 @@ function renderMahallas() {
   document.getElementById("mahallaList").innerHTML = state.mahallas
     .map((m) => {
       const liveCount = state.issues.filter((i) =>
-        m.name.toLowerCase().includes(i.district.toLowerCase())
+        m.district ? i.district === m.district : m.name.toLowerCase().includes(i.district.toLowerCase())
       ).length;
       return `
         <div class="mahalla-box">
@@ -1029,9 +1413,11 @@ function openDetailModal(issueId) {
     saveState();
   }
 
-  const readersNames = item.readBy
-    .map((id) => state.admins.find((a) => a.id === id)?.name)
-    .filter(Boolean);
+  const readersNames = item.readBy.map((id) => state.admins.find((a) => a.id === id)?.name).filter(Boolean);
+  const sla = getSlaInfo(item);
+  const notifObj = item.notified || {};
+  const showSafety = isSafetyRequired(item);
+  const safetyObj = item.safetyCheck || {};
 
   const activeIdx = Math.max(0, STAGES.indexOf(item.status));
   const modal = document.getElementById("detailModal");
@@ -1042,12 +1428,52 @@ function openDetailModal(issueId) {
       <span class="priority-badge ${getPriorityClass(item.priority)}">${item.priority}</span>
       <span class="code-pill">Yo‘nalish: ${escapeHtml(item.category)}</span>
       <span class="code-pill">Holat: ${escapeHtml(item.status)}</span>
+      <span class="code-pill ${sla.badgeClass}">⏱️ ${escapeHtml(sla.label)}</span>
+      <span class="code-pill">${escapeHtml(formatConditionBadge(item.conditionTag))}</span>
       ${item.visualTag ? `<span class="visual-tag-pill">${escapeHtml(item.visualTag)}</span>` : ""}
     </div>
-    <p><strong>Manzil:</strong> ${escapeHtml(item.district)}, ${escapeHtml(item.address)}</p>
+    <p><strong>Manzil:</strong> Sirdaryo viloyati, ${escapeHtml(item.district)}, ${escapeHtml(item.address)}</p>
+    <p><strong>Brigada:</strong> ${escapeHtml(item.brigade || "Biriktirilmagan")} • <strong>Javobgar shaxs:</strong> ${escapeHtml(item.assignee || "Belgilanmagan")}</p>
     <p><strong>Mas’ul tashkilot:</strong> ${escapeHtml(item.service)}</p>
     <p><strong>Tavsif:</strong> ${escapeHtml(item.description)}</p>
-    <p><strong>O‘qigan adminlar:</strong> ${readersNames.length ? escapeHtml(readersNames.join(", ")) : "Hali o‘qilmagan"}</p>
+    <p><strong>O‘qiganlar:</strong> ${readersNames.length ? escapeHtml(readersNames.join(", ")) : "Hali o‘qilmagan"}</p>
+
+    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:8px 0;">
+      <strong>Xabardor qilish ro‘yxati (${getNotifiedCount(item)}/3):</strong>
+      ${NOTIFY_TARGETS.map((t) => {
+        const active = Boolean(notifObj[t.key]);
+        return `
+          <button type="button" class="mini-btn ${active ? "active-toggle" : ""}" data-detail-notify="${t.key}">
+            ${active ? "✓" : "+"} ${escapeHtml(t.label)}
+          </button>
+        `;
+      }).join("")}
+    </div>
+
+    ${
+      showSafety
+        ? `
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:8px 0; padding:8px; border-radius:8px; background:rgba(234,179,8,0.08);">
+        <strong>⚠️ Xavfsizlik tekshiruvi (${getSafetyDoneCount(item)}/3):</strong>
+        ${SAFETY_CHECKS.map((sc) => {
+          const checked = Boolean(safetyObj[sc.key]);
+          return `
+            <button type="button" class="mini-btn ${checked ? "active-toggle" : ""}" data-detail-safety="${sc.key}">
+              ${checked ? "✓" : "○"} ${escapeHtml(sc.label)}
+            </button>
+          `;
+        }).join("")}
+      </div>
+    `
+        : ""
+    }
+
+    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:8px 0;">
+      <strong>SLA muddatini o‘zgartirish:</strong>
+      ${SLA_OPTIONS.map(
+        (hrs) => `<button type="button" class="mini-btn ${Number(item.slaHours) === hrs ? "active-toggle" : ""}" data-set-sla="${hrs}">${hrs} soat</button>`
+      ).join("")}
+    </div>
 
     <div class="timeline-box">
       <strong>Murojaat Holati Vaqt Shkalasi (Bosqichni bosib o‘zgartiring):</strong>
@@ -1065,12 +1491,7 @@ function openDetailModal(issueId) {
       <div class="comment-list">
         ${
           item.comments.length
-            ? item.comments
-                .map(
-                  (c) =>
-                    `<div class="comment-item"><strong>${escapeHtml(c.author)}:</strong> ${escapeHtml(c.text)}</div>`
-                )
-                .join("")
+            ? item.comments.map((c) => `<div class="comment-item"><strong>${escapeHtml(c.author)}:</strong> ${escapeHtml(c.text)}</div>`).join("")
             : `<div class="muted-text">Hozircha izoh qoldirilmagan.</div>`
         }
       </div>
@@ -1093,15 +1514,61 @@ function escapeHtml(str) {
 }
 
 function bindEvents() {
+  document.getElementById("loginForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const nameVal = document.getElementById("loginFullName").value;
+    const roleVal = document.getElementById("loginRole").value;
+    const codeVal = document.getElementById("loginAdminCode").value;
+    const distVal = document.getElementById("loginDistrict").value;
+    const phoneVal = document.getElementById("loginPhone").value;
+    loginUserByName(nameVal, distVal, phoneVal, roleVal, codeVal);
+  });
+
+  document.getElementById("quickAccountsList").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-quick-login-id]");
+    if (!btn) return;
+    const found = state.admins.find((a) => a.id === btn.dataset.quickLoginId);
+    if (found) {
+      loginUserByName(found.name, found.district, found.phone, found.role, ADMIN_ACCESS_CODE);
+    }
+  });
+
+  document.getElementById("logoutBtn").addEventListener("click", () => {
+    state.isAuthenticated = false;
+    saveState();
+    renderAuthScreen();
+    showToast("Profildan chiqdingiz");
+  });
+
+  document.getElementById("openSidebarBtn").addEventListener("click", () => {
+    openAdminPanelModal();
+  });
+
+  document.getElementById("closeAdminPanelModalBtn").addEventListener("click", () => {
+    document.getElementById("adminPanelModal").classList.add("hidden");
+  });
+  document.getElementById("closeAdminPanelModalOkBtn").addEventListener("click", () => {
+    document.getElementById("adminPanelModal").classList.add("hidden");
+  });
+  document.getElementById("jumpToAdminsSectionBtn").addEventListener("click", () => {
+    document.getElementById("adminPanelModal").classList.add("hidden");
+    document.getElementById("adminsSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  document.getElementById("closeSidebarBtn").addEventListener("click", () => {
+    document.getElementById("sidebar").classList.remove("open");
+  });
+
   document.querySelectorAll(".nav-item").forEach((btn) => {
     btn.addEventListener("click", () => {
+      const view = btn.dataset.view;
+      if (view === "admins" && !hasAdminPanelAccess()) {
+        showToast("⛔ Admin Panel faqat Bosh Admin yoki O‘quvchi Admin uchun!");
+        return;
+      }
       document.querySelectorAll(".nav-item").forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
-      const view = btn.dataset.view;
-      document.getElementById("currentBreadcrumb").textContent = btn.textContent
-        .trim()
-        .replace(/\d+$/, "")
-        .trim();
+      document.getElementById("currentBreadcrumb").textContent = btn.textContent.trim().replace(/\d+$/, "").trim();
 
       const targetMap = {
         dashboard: ".kpi-grid",
@@ -1121,18 +1588,10 @@ function bindEvents() {
     });
   });
 
-  document.getElementById("openSidebarBtn").addEventListener("click", () => {
-    document.getElementById("sidebar").classList.add("open");
-  });
-  document.getElementById("closeSidebarBtn").addEventListener("click", () => {
-    document.getElementById("sidebar").classList.remove("open");
-  });
-
-  // Admin profil almashtirish, yangi admin berish va vaqtinchalik muzlatish
   document.getElementById("activeAdminSelect").addEventListener("change", (e) => {
     state.currentAdminId = e.target.value;
     renderAll();
-    showToast(`Faol profil: ${getCurrentAdmin().name}`);
+    showToast(`Faol profil: ${getCurrentAdmin().name} (${getCurrentAdmin().role})`);
   });
 
   document.getElementById("unfreezeCurrentAdminBtn").addEventListener("click", () => {
@@ -1146,49 +1605,35 @@ function bindEvents() {
 
   document.getElementById("grantAdminForm").addEventListener("submit", (e) => {
     e.preventDefault();
-    if (!ensureAdminNotFrozen("Yangi admin qo‘shish")) return;
+    if (!hasAdminPanelAccess()) {
+      showToast("⛔ Faqat Bosh Admin yoki O‘quvchi Admin profil qo‘sha oladi!");
+      return;
+    }
+    if (!ensureAdminNotFrozen("Yangi profil qo‘shish")) return;
 
-    const nameInput = document.getElementById("newAdminName");
-    const phoneInput = document.getElementById("newAdminPhone");
-    const districtInput = document.getElementById("newAdminDistrict");
-    const roleInput = document.getElementById("newAdminRole");
-
-    const fullName = nameInput.value.trim();
+    const fullName = document.getElementById("newAdminName").value.trim();
+    const phoneVal = document.getElementById("newAdminPhone").value.trim();
+    const districtVal = document.getElementById("newAdminDistrict").value;
+    const roleVal = document.getElementById("newAdminRole").value;
     if (!fullName) return;
 
-    const parts = fullName.split(/\s+/);
-    const initials =
-      parts
-        .slice(0, 2)
-        .map((p) => p[0]?.toUpperCase() || "")
-        .join("") || "AD";
-
     const newId = `adm-${Date.now()}`;
-    const newAdm = {
+    state.admins.push({
       id: newId,
       name: fullName,
-      initials,
-      phone: phoneInput.value.trim() || "Ko‘rsatilmagan",
-      district: districtInput.value,
-      role: roleInput.value,
+      initials: makeInitials(fullName),
+      phone: phoneVal || "Ko‘rsatilmagan",
+      district: districtVal,
+      role: roleVal,
       frozen: false,
-      isSuper: false,
+      isSuper: roleVal === "Bosh Admin",
       commentsCount: 0,
       resolvedCount: 0
-    };
-
-    state.admins.push(newAdm);
-    state.personalNotes[newId] = [];
-    state.currentAdminId = newId;
-    state.notifications.unshift({
-      id: Date.now(),
-      text: `${newAdm.name} ga admin huquqi berildi (${newAdm.district}).`,
-      read: false
     });
-
+    state.personalNotes[newId] = [];
     e.target.reset();
     renderAll();
-    showToast(`${newAdm.name} admin sifatida qo‘shildi`);
+    showToast(`${fullName} (${roleVal}) qo‘shildi`);
   });
 
   document.getElementById("adminsGrid").addEventListener("click", (e) => {
@@ -1206,29 +1651,22 @@ function bindEvents() {
       if (!adm) return;
       adm.frozen = !adm.frozen;
       renderAll();
-      showToast(
-        adm.frozen
-          ? `❄️ ${adm.name} vaqtinchalik muzlatildi`
-          : `✓ ${adm.name} qayta faollashtirildi`
-      );
+      showToast(adm.frozen ? `❄️ ${adm.name} muzlatildi` : `✓ ${adm.name} faollashtirildi`);
       return;
     }
 
     const removeBtn = e.target.closest("[data-remove-admin]");
     if (removeBtn) {
-      if (!ensureAdminNotFrozen("Admin huquqini olish")) return;
+      if (!ensureAdminNotFrozen("Profilni o‘chirish")) return;
       const id = removeBtn.dataset.removeAdmin;
       state.admins = state.admins.filter((a) => a.id !== id);
       delete state.personalNotes[id];
-      if (state.currentAdminId === id) {
-        state.currentAdminId = state.admins[0]?.id || "adm-1";
-      }
+      if (state.currentAdminId === id) state.currentAdminId = state.admins[0]?.id || "adm-1";
       renderAll();
-      showToast("Admin huquqi olib tashlandi");
+      showToast("Profil olib tashlandi");
     }
   });
 
-  // Shaxsiy eslatmalar
   document.getElementById("addPersonalNoteForm").addEventListener("submit", (e) => {
     e.preventDefault();
     const curAdmin = getCurrentAdmin();
@@ -1237,14 +1675,8 @@ function bindEvents() {
     const text = input.value.trim();
     if (!text) return;
 
-    if (!Array.isArray(state.personalNotes[curAdmin.id])) {
-      state.personalNotes[curAdmin.id] = [];
-    }
-    state.personalNotes[curAdmin.id].unshift({
-      id: `n-${Date.now()}`,
-      text,
-      done: false
-    });
+    if (!Array.isArray(state.personalNotes[curAdmin.id])) state.personalNotes[curAdmin.id] = [];
+    state.personalNotes[curAdmin.id].unshift({ id: `n-${Date.now()}`, text, done: false });
     input.value = "";
     renderPersonalNotesAndDailyReport();
     saveState();
@@ -1254,8 +1686,7 @@ function bindEvents() {
   document.getElementById("personalNotesList").addEventListener("change", (e) => {
     const chk = e.target.closest(".note-toggle-chk");
     if (!chk) return;
-    const curAdmin = getCurrentAdmin();
-    const notes = state.personalNotes[curAdmin?.id] || [];
+    const notes = state.personalNotes[getCurrentAdmin()?.id] || [];
     const found = notes.find((n) => n.id === chk.dataset.noteId);
     if (found) {
       found.done = chk.checked;
@@ -1269,15 +1700,34 @@ function bindEvents() {
     if (!delBtn) return;
     const curAdmin = getCurrentAdmin();
     if (!curAdmin) return;
-    state.personalNotes[curAdmin.id] = (state.personalNotes[curAdmin.id] || []).filter(
-      (n) => n.id !== delBtn.dataset.delNote
-    );
+    state.personalNotes[curAdmin.id] = (state.personalNotes[curAdmin.id] || []).filter((n) => n.id !== delBtn.dataset.delNote);
     renderPersonalNotesAndDailyReport();
     saveState();
     showToast("Eslatma o‘chirildi");
   });
 
-  // Tezkor filtr presetlari
+  document.getElementById("saveHandoverForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (!ensureAdminNotFrozen("Smena topshirish xulosasini saqlash")) return;
+    const input = document.getElementById("handoverNoteInput");
+    const noteText = input.value.trim();
+    if (!noteText) return;
+    const curAdmin = getCurrentAdmin();
+    const nowTime = new Date().toLocaleTimeString("uz-UZ", { hour: "2-digit", minute: "2-digit" });
+
+    state.shiftHandover = { note: noteText, by: curAdmin?.name || "Navbatchi", updatedAt: `Bugun, ${nowTime}` };
+    input.value = "";
+    renderShiftHandover();
+    saveState();
+    showToast("Smena topshirish xulosasi saqlandi");
+  });
+
+  document.getElementById("copyHandoverBtn").addEventListener("click", () => {
+    const text = buildHandoverSummaryText().fullCopy;
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).catch(() => {});
+    showToast("Smena topshirish xulosasi nusxalandi");
+  });
+
   document.getElementById("presetBar").addEventListener("click", (e) => {
     const btn = e.target.closest(".preset-btn");
     if (!btn) return;
@@ -1285,22 +1735,14 @@ function bindEvents() {
     renderAll();
   });
 
-  // Navbatchilik vazifalari
   document.getElementById("addTaskForm").addEventListener("submit", (e) => {
     e.preventDefault();
     if (!ensureAdminNotFrozen("Vazifa qo‘shish")) return;
-
     const input = document.getElementById("newTaskText");
     const assignee = document.getElementById("newTaskAssignee").value;
     const text = input.value.trim();
     if (!text) return;
-
-    state.planTasks.unshift({
-      id: `t-${Date.now()}`,
-      text,
-      assignee,
-      done: false
-    });
+    state.planTasks.unshift({ id: `t-${Date.now()}`, text, assignee, done: false });
     input.value = "";
     renderDutyAndTasks();
     saveState();
@@ -1332,34 +1774,25 @@ function bindEvents() {
     showToast("Vazifa o‘chirildi");
   });
 
-  // Joylashuvni qulflash/ochish
   document.getElementById("lockLayoutBtn").addEventListener("click", () => {
     state.layoutLocked = !state.layoutLocked;
     applyLayoutAndSettings();
     saveState();
-    showToast(
-      state.layoutLocked
-        ? "Joylashuv qulflandi — tasodifiy siljishdan himoyalangan"
-        : "Joylashuv ochildi — bo‘limlar tartibini o‘zgartirishingiz mumkin"
-    );
+    showToast(state.layoutLocked ? "Joylashuv qulflandi" : "Joylashuv ochildi");
   });
 
   document.getElementById("sectionOrderList").addEventListener("click", (e) => {
     const btn = e.target.closest(".move-sec-btn");
     if (!btn || state.layoutLocked) return;
-    const secId = btn.dataset.sec;
-    const dir = btn.dataset.dir;
-    const idx = state.sectionOrder.indexOf(secId);
+    const idx = state.sectionOrder.indexOf(btn.dataset.sec);
     if (idx === -1) return;
-    const swapIdx = dir === "up" ? idx - 1 : idx + 1;
+    const swapIdx = btn.dataset.dir === "up" ? idx - 1 : idx + 1;
     if (swapIdx < 0 || swapIdx >= state.sectionOrder.length) return;
-
     const copy = [...state.sectionOrder];
     [copy[idx], copy[swapIdx]] = [copy[swapIdx], copy[idx]];
     state.sectionOrder = copy;
     applyLayoutAndSettings();
     saveState();
-    showToast("Bo‘lim joylashuvi yangilandi");
   });
 
   document.getElementById("densityGroup").addEventListener("click", (e) => {
@@ -1368,7 +1801,6 @@ function bindEvents() {
     state.density = btn.dataset.density;
     applyLayoutAndSettings();
     saveState();
-    showToast(state.density === "compact" ? "Ixcham zichlik yoqildi" : "Qulay zichlik yoqildi");
   });
 
   document.getElementById("workspaceModeGroup").addEventListener("click", (e) => {
@@ -1377,7 +1809,6 @@ function bindEvents() {
     state.workspaceMode = btn.dataset.wsmode;
     applyLayoutAndSettings();
     saveState();
-    showToast(state.workspaceMode === "stacked" ? "1 ustunli tartib yoqildi" : "2 ustunli tartib yoqildi");
   });
 
   document.getElementById("resetLayoutOrderBtn").addEventListener("click", () => {
@@ -1387,19 +1818,17 @@ function bindEvents() {
     state.layoutLocked = true;
     applyLayoutAndSettings();
     saveState();
-    showToast("Joylashuv va tartib standart holatga qaytarildi");
+    showToast("Standart tartib qaytarildi");
   });
 
   document.getElementById("themeToggleBtn").addEventListener("click", () => {
     state.theme = state.theme === "dark" ? "light" : "dark";
     renderAll();
-    showToast(state.theme === "dark" ? "Tungi rejim yoqildi" : "Kunduzgi rejim yoqildi");
   });
 
   document.getElementById("langToggleBtn").addEventListener("click", () => {
     state.lang = state.lang === "uz" ? "lat" : "uz";
     renderAll();
-    showToast("Til belgisi yangilandi");
   });
 
   document.getElementById("notifBtn").addEventListener("click", (e) => {
@@ -1413,8 +1842,7 @@ function bindEvents() {
     e.stopPropagation();
     const li = e.target.closest("[data-notif-id]");
     if (li) {
-      const id = Number(li.dataset.notifId);
-      const found = state.notifications.find((n) => n.id === id);
+      const found = state.notifications.find((n) => n.id === Number(li.dataset.notifId));
       if (found) found.read = true;
       renderNotifications();
       saveState();
@@ -1424,7 +1852,6 @@ function bindEvents() {
     state.notifications.forEach((n) => (n.read = true));
     renderNotifications();
     saveState();
-    showToast("Barcha xabarnomalar o‘qilgan deb belgilandi");
   });
 
   document.getElementById("searchInput").addEventListener("input", (e) => {
@@ -1495,19 +1922,16 @@ function bindEvents() {
     const btn = e.target.closest(".copy-phone-btn");
     if (!btn) return;
     const phone = btn.dataset.phone;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(phone).catch(() => {});
-    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(phone).catch(() => {});
     showToast(`Raqam nusxalandi: ${phone}`);
   });
 
-  document.getElementById("printReportBtn").addEventListener("click", () => {
-    window.print();
-  });
+  document.getElementById("printReportBtn").addEventListener("click", () => window.print());
 
   const addModal = document.getElementById("addIssueModal");
   document.getElementById("openAddModalBtn").addEventListener("click", () => {
     if (!ensureAdminNotFrozen("Yangi muammo qo‘shish")) return;
+    renderAdminSwitcherAndGrid();
     addModal.classList.remove("hidden");
     document.getElementById("issueTitle").focus();
   });
@@ -1522,10 +1946,21 @@ function bindEvents() {
     const category = document.getElementById("issueCategory").value;
     const district = document.getElementById("issueDistrict").value;
     const priority = document.getElementById("issuePriority").value;
+    const brigade = document.getElementById("issueBrigade").value;
+    const assignee = document.getElementById("issueAssignee").value;
+    const slaHours = Number(document.getElementById("issueSlaHours").value) || 24;
+    const conditionTag = document.getElementById("issueCondition").value;
     const address = document.getElementById("issueAddress").value.trim();
-    const service = document.getElementById("issueService").value.trim() || "Shahar Kommunal Xizmati";
+    const service = document.getElementById("issueService").value.trim() || "Sirdaryo Kommunal Xizmati";
     const visualTag = document.getElementById("issueVisualTag").value;
     const description = document.getElementById("issueDesc").value.trim();
+    const curAdmin = getCurrentAdmin();
+
+    const notified = {
+      mahallaChair: document.getElementById("notifyMahallaChair").checked,
+      districtDisp: document.getElementById("notifyDistrictDisp").checked,
+      brigadeLead: document.getElementById("notifyBrigadeLead").checked
+    };
 
     const prefixMap = { Suv: "W", Elektr: "E", "Yo‘l": "I", Gaz: "G", Yoritish: "L" };
     const code = `${prefixMap[category] || "M"}-${Math.floor(100 + Math.random() * 899)}`;
@@ -1539,32 +1974,58 @@ function bindEvents() {
       address,
       priority,
       status: "Yangi",
+      brigade,
+      assignee,
+      slaHours,
+      createdAt: Date.now(),
+      conditionTag,
+      notified,
+      safetyCheck: { areaDisconnected: false, citizensNotified: false, emergencyContacted: false },
       service,
       timeAgo: "Hozirgina",
       votes: 1,
       voted: true,
       x: Math.floor(20 + Math.random() * 62),
       y: Math.floor(20 + Math.random() * 58),
-      readBy: [],
+      readBy: curAdmin ? [curAdmin.id] : [],
       description,
       comments: []
     };
 
     state.issues.unshift(newIssue);
     state.activeMapPinId = newIssue.id;
-    state.notifications.unshift({
-      id: Date.now(),
-      text: `Yangi murojaat #${newIssue.id} (${newIssue.district}) ro‘yxatga qo‘shildi.`,
-      read: false
-    });
-
     e.target.reset();
+    document.getElementById("notifyMahallaChair").checked = true;
     addModal.classList.add("hidden");
     renderAll();
     showToast(`#${newIssue.id} murojaat qo‘shildi`);
   });
 
   document.getElementById("issuesList").addEventListener("click", (e) => {
+    const safetyBtn = e.target.closest("[data-safety-issue]");
+    if (safetyBtn) {
+      if (!ensureAdminNotFrozen("Xavfsizlik tekshiruvini yangilash")) return;
+      const item = state.issues.find((i) => i.id === safetyBtn.dataset.safetyIssue);
+      const key = safetyBtn.dataset.safetyKey;
+      if (!item || !key) return;
+      if (!item.safetyCheck) item.safetyCheck = {};
+      item.safetyCheck[key] = !item.safetyCheck[key];
+      renderAll();
+      return;
+    }
+
+    const notifyBtn = e.target.closest("[data-notify-issue]");
+    if (notifyBtn) {
+      if (!ensureAdminNotFrozen("Xabardor qilish holatini o‘zgartirish")) return;
+      const item = state.issues.find((i) => i.id === notifyBtn.dataset.notifyIssue);
+      const key = notifyBtn.dataset.notifyKey;
+      if (!item || !key) return;
+      if (!item.notified) item.notified = {};
+      item.notified[key] = !item.notified[key];
+      renderAll();
+      return;
+    }
+
     const voteBtn = e.target.closest("[data-vote-id]");
     if (voteBtn) {
       const item = state.issues.find((i) => i.id === voteBtn.dataset.voteId);
@@ -1572,7 +2033,6 @@ function bindEvents() {
       item.voted = !item.voted;
       item.votes += item.voted ? 1 : -1;
       renderAll();
-      showToast(item.voted ? "Ovoz qo‘shildi" : "Ovoz bekor qilindi");
       return;
     }
 
@@ -1584,13 +2044,8 @@ function bindEvents() {
       if (!item || !curAdmin) return;
       if (!Array.isArray(item.readBy)) item.readBy = [];
       const idx = item.readBy.indexOf(curAdmin.id);
-      if (idx >= 0) {
-        item.readBy.splice(idx, 1);
-        showToast(`#${item.id} o‘qilmagan deb belgilandi`);
-      } else {
-        item.readBy.push(curAdmin.id);
-        showToast(`#${item.id} ${curAdmin.name} tomonidan o‘qilgan deb belgilandi`);
-      }
+      if (idx >= 0) item.readBy.splice(idx, 1);
+      else item.readBy.push(curAdmin.id);
       renderIssues();
       renderAdminSwitcherAndGrid();
       renderPersonalNotesAndDailyReport();
@@ -1604,7 +2059,6 @@ function bindEvents() {
       renderMap();
       saveState();
       document.getElementById("mapSection").scrollIntoView({ behavior: "smooth", block: "nearest" });
-      showToast(`#${pinBtn.dataset.pinId} xaritada belgilandi`);
       return;
     }
 
@@ -1619,21 +2073,60 @@ function bindEvents() {
       if (!ensureAdminNotFrozen("Murojaatni o‘chirish")) return;
       const id = delBtn.dataset.deleteId;
       state.issues = state.issues.filter((i) => i.id !== id);
-      if (state.activeMapPinId === id) {
-        state.activeMapPinId = state.issues[0]?.id || "";
-      }
+      if (state.activeMapPinId === id) state.activeMapPinId = state.issues[0]?.id || "";
       renderAll();
       showToast(`#${id} murojaat o‘chirildi`);
     }
   });
 
   document.getElementById("issuesList").addEventListener("change", (e) => {
-    const sel = e.target.closest("[data-status-id]");
-    if (!sel) return;
-    if (!ensureAdminNotFrozen("Holatni o‘zgartirish")) {
-      renderIssues();
+    const brigadeSel = e.target.closest("[data-brigade-id]");
+    if (brigadeSel) {
+      if (!ensureAdminNotFrozen("Brigada biriktirish")) return renderIssues();
+      const item = state.issues.find((i) => i.id === brigadeSel.dataset.brigadeId);
+      if (item) {
+        item.brigade = brigadeSel.value;
+        renderAll();
+      }
       return;
     }
+
+    const assigneeSel = e.target.closest("[data-assignee-id]");
+    if (assigneeSel) {
+      if (!ensureAdminNotFrozen("Javobgar shaxsni belgilash")) return renderIssues();
+      const item = state.issues.find((i) => i.id === assigneeSel.dataset.assigneeId);
+      if (item) {
+        item.assignee = assigneeSel.value;
+        renderAll();
+      }
+      return;
+    }
+
+    const slaSel = e.target.closest("[data-sla-id]");
+    if (slaSel) {
+      if (!ensureAdminNotFrozen("SLA muddatini o‘zgartirish")) return renderIssues();
+      const item = state.issues.find((i) => i.id === slaSel.dataset.slaId);
+      if (item) {
+        item.slaHours = Number(slaSel.value) || 24;
+        renderAll();
+      }
+      return;
+    }
+
+    const condSel = e.target.closest("[data-cond-id]");
+    if (condSel) {
+      if (!ensureAdminNotFrozen("Sharoitni o‘zgartirish")) return renderIssues();
+      const item = state.issues.find((i) => i.id === condSel.dataset.condId);
+      if (item) {
+        item.conditionTag = condSel.value;
+        renderAll();
+      }
+      return;
+    }
+
+    const sel = e.target.closest("[data-status-id]");
+    if (!sel) return;
+    if (!ensureAdminNotFrozen("Holatni o‘zgartirish")) return renderIssues();
     const item = state.issues.find((i) => i.id === sel.dataset.statusId);
     const curAdmin = getCurrentAdmin();
     if (!item) return;
@@ -1643,7 +2136,6 @@ function bindEvents() {
       curAdmin.resolvedCount = (curAdmin.resolvedCount || 0) + 1;
     }
     renderAll();
-    showToast(`#${item.id} holati: ${item.status}`);
   });
 
   document.getElementById("mapPinsContainer").addEventListener("click", (e) => {
@@ -1662,7 +2154,6 @@ function bindEvents() {
   document.getElementById("resetMapFocusBtn").addEventListener("click", () => {
     state.selectedDistrict = "all";
     renderAll();
-    showToast("Xaritadagi barcha nuqtalar ko‘rsatildi");
   });
 
   document.getElementById("districtBars").addEventListener("click", (e) => {
@@ -1677,11 +2168,47 @@ function bindEvents() {
     state.selectedStatus = "Hal qilindi";
     renderAll();
     document.getElementById("issuesSection").scrollIntoView({ behavior: "smooth" });
-    showToast("Hal etilgan murojaatlar ko‘rsatilmoqda");
   });
 
   const detailModal = document.getElementById("detailModal");
   document.getElementById("detailModalBody").addEventListener("click", (e) => {
+    const detailSafetyBtn = e.target.closest("[data-detail-safety]");
+    if (detailSafetyBtn && currentDetailIssueId) {
+      if (!ensureAdminNotFrozen("Xavfsizlik tekshiruvini yangilash")) return;
+      const item = state.issues.find((i) => i.id === currentDetailIssueId);
+      const key = detailSafetyBtn.dataset.detailSafety;
+      if (!item || !key) return;
+      if (!item.safetyCheck) item.safetyCheck = {};
+      item.safetyCheck[key] = !item.safetyCheck[key];
+      renderAll();
+      openDetailModal(item.id);
+      return;
+    }
+
+    const detailNotifBtn = e.target.closest("[data-detail-notify]");
+    if (detailNotifBtn && currentDetailIssueId) {
+      if (!ensureAdminNotFrozen("Xabardor qilish holatini o‘zgartirish")) return;
+      const item = state.issues.find((i) => i.id === currentDetailIssueId);
+      const key = detailNotifBtn.dataset.detailNotify;
+      if (!item || !key) return;
+      if (!item.notified) item.notified = {};
+      item.notified[key] = !item.notified[key];
+      renderAll();
+      openDetailModal(item.id);
+      return;
+    }
+
+    const slaBtn = e.target.closest("[data-set-sla]");
+    if (slaBtn && currentDetailIssueId) {
+      if (!ensureAdminNotFrozen("SLA muddatini o‘zgartirish")) return;
+      const item = state.issues.find((i) => i.id === currentDetailIssueId);
+      if (!item) return;
+      item.slaHours = Number(slaBtn.dataset.setSla) || 24;
+      renderAll();
+      openDetailModal(item.id);
+      return;
+    }
+
     const stageBtn = e.target.closest("[data-set-stage]");
     if (!stageBtn || !currentDetailIssueId) return;
     if (!ensureAdminNotFrozen("Bosqichni o‘zgartirish")) return;
@@ -1696,7 +2223,6 @@ function bindEvents() {
     }
     renderAll();
     openDetailModal(item.id);
-    showToast(`#${item.id} bosqichi: ${item.status}`);
   });
 
   document.getElementById("closeDetailModalBtn").addEventListener("click", () => detailModal.classList.add("hidden"));
@@ -1704,23 +2230,18 @@ function bindEvents() {
   document.getElementById("commentForm").addEventListener("submit", (e) => {
     e.preventDefault();
     if (!ensureAdminNotFrozen("Izoh yozish")) return;
-
     const issueId = e.target.dataset.issueId;
     const input = document.getElementById("commentInput");
     const text = input.value.trim();
     if (!text) return;
-
     const item = state.issues.find((i) => i.id === issueId);
     const curAdmin = getCurrentAdmin();
     if (item) {
-      item.comments.push({ author: curAdmin?.name || "Admin", text });
-      if (curAdmin) {
-        curAdmin.commentsCount = (curAdmin.commentsCount || 0) + 1;
-      }
+      item.comments.push({ author: curAdmin?.name || "Foydalanuvchi", text });
+      if (curAdmin) curAdmin.commentsCount = (curAdmin.commentsCount || 0) + 1;
       input.value = "";
       saveState();
       openDetailModal(issueId);
-      showToast("Izoh qo‘shildi");
     }
   });
 
@@ -1732,25 +2253,21 @@ function bindEvents() {
   document.getElementById("fontDecreaseBtn").addEventListener("click", () => {
     state.fontScale = Math.max(0.88, Number((state.fontScale - 0.06).toFixed(2)));
     renderAll();
-    showToast(`Shrift: ${Math.round(state.fontScale * 100)}%`);
   });
 
   document.getElementById("fontResetBtn").addEventListener("click", () => {
     state.fontScale = 1;
     renderAll();
-    showToast("Shrift 100% ga qaytarildi");
   });
 
   document.getElementById("fontIncreaseBtn").addEventListener("click", () => {
     state.fontScale = Math.min(1.24, Number((state.fontScale + 0.06).toFixed(2)));
     renderAll();
-    showToast(`Shrift: ${Math.round(state.fontScale * 100)}%`);
   });
 
   document.getElementById("autosaveToggleBtn").addEventListener("click", () => {
     state.autosave = !state.autosave;
     renderAll();
-    showToast(state.autosave ? "Avtomatik saqlash yoqildi" : "Avtomatik saqlash o‘chirildi");
   });
 
   document.getElementById("exportJsonBtn").addEventListener("click", () => {
@@ -1758,10 +2275,9 @@ function bindEvents() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "mahalla-nazorat-muammolar.json";
+    a.download = "sirdaryo-mahalla-nazorat.json";
     a.click();
     URL.revokeObjectURL(url);
-    showToast("JSON fayl yuklab olindi");
   });
 
   document.getElementById("resetDemoBtn").addEventListener("click", () => {
@@ -1771,7 +2287,8 @@ function bindEvents() {
     showToast("Boshlang‘ich ma’lumotlar tiklandi");
   });
 
-  [addModal, detailModal, helpModal].forEach((backdrop) => {
+  const adminModal = document.getElementById("adminPanelModal");
+  [addModal, detailModal, helpModal, adminModal].forEach((backdrop) => {
     backdrop.addEventListener("click", (e) => {
       if (e.target === backdrop) backdrop.classList.add("hidden");
     });
@@ -1782,3 +2299,591 @@ document.addEventListener("DOMContentLoaded", () => {
   bindEvents();
   renderAll();
 });
+/* =========================================================
+   ADMIN PANEL QO'SHIMCHASI (FAYL OXIRIGA QO'SHISH UCHUN)
+   1. Saytni boshqarish (murojaat qo'shish, ovoz berish, e'lon)
+   2. Odamlar nima qilyapti? (so'nggi harakatlar)
+   ========================================================= */
+
+(function attachAdminPanelFooterAddon() {
+  if (typeof state === "undefined") return;
+
+  if (!state.siteControls) {
+    state.siteControls = {
+      allowNewIssues: true,
+      allowVoting: true,
+      bannerText: ""
+    };
+  }
+
+  if (!Array.isArray(state.activityLog)) {
+    state.activityLog = [
+      { time: "18:45", user: "Odilbek R.", action: "#E-802 muammosiga ovoz berdi" },
+      { time: "18:20", user: "Hamidov A.", action: "#W-104 holatini O‘rganilmoqda ga o‘zgartirdi" },
+      { time: "17:55", user: "Hamdov A.", action: "Smena topshirish xulosasini yangiladi" }
+    ];
+  }
+
+  function pushAdminActivity(actorName, detailText) {
+    const who = actorName || (typeof getCurrentAdmin === "function" ? getCurrentAdmin()?.name : "") || "Foydalanuvchi";
+    const clock = new Date().toLocaleTimeString("uz-UZ", { hour: "2-digit", minute: "2-digit" });
+    state.activityLog.unshift({ time: clock, user: who, action: detailText });
+    if (state.activityLog.length > 20) state.activityLog.length = 20;
+  }
+
+  function syncSiteAccessControls() {
+    const ctrl = state.siteControls || { allowNewIssues: true, allowVoting: true, bannerText: "" };
+
+    const addIssueBtn = document.getElementById("openAddModalBtn");
+    if (addIssueBtn) {
+      addIssueBtn.disabled = !ctrl.allowNewIssues;
+      addIssueBtn.style.opacity = ctrl.allowNewIssues ? "1" : "0.55";
+      addIssueBtn.title = ctrl.allowNewIssues ? "" : "Admin tomonidan vaqtincha yopilgan";
+    }
+
+    document.querySelectorAll(".vote-btn").forEach((voteBtn) => {
+      voteBtn.disabled = !ctrl.allowVoting;
+      voteBtn.style.opacity = ctrl.allowVoting ? "1" : "0.55";
+    });
+
+    let noticeBar = document.getElementById("adminTopNoticeBar");
+    if (!noticeBar) {
+      noticeBar = document.createElement("div");
+      noticeBar.id = "adminTopNoticeBar";
+      noticeBar.className = "frozen-banner hidden";
+      const actionSection = document.querySelector(".action-bar");
+      actionSection?.parentNode?.insertBefore(noticeBar, actionSection);
+    }
+
+    if (ctrl.bannerText && ctrl.bannerText.trim()) {
+      noticeBar.innerHTML = `<span>📢 <strong>Admin e’loni:</strong> ${escapeHtml(ctrl.bannerText.trim())}</span>`;
+      noticeBar.classList.remove("hidden");
+    } else {
+      noticeBar.classList.add("hidden");
+    }
+  }
+
+  window.openAdminPanelModal = function () {
+    const activeUser = typeof getCurrentAdmin === "function" ? getCurrentAdmin() : null;
+    const allowed =
+      typeof hasAdminPanelAccess === "function"
+        ? hasAdminPanelAccess(activeUser)
+        : Boolean(activeUser && (activeUser.isSuper || /admin/i.test(activeUser.role || "")));
+
+    if (!allowed) {
+      if (typeof showToast === "function") {
+        showToast("⛔ Bu bo‘lim faqat Bosh Admin yoki O‘quvchi Admin uchun!");
+      }
+      return;
+    }
+
+    const ctrl = state.siteControls;
+    const recentLogs = (state.activityLog || []).slice(0, 6);
+    const titleEl = document.getElementById("adminPanelModalTitle");
+    const bodyEl = document.getElementById("adminPanelModalBody");
+    const modalEl = document.getElementById("adminPanelModal");
+    if (!bodyEl || !modalEl) return;
+
+    if (titleEl) {
+      titleEl.textContent = `Admin Panel • ${activeUser.name}`;
+    }
+
+    bodyEl.innerHTML = `
+      <div class="sub-panel-box" style="margin-bottom:12px;">
+        <strong style="display:block; margin-bottom:8px;">⚙️ Saytni boshqarish</strong>
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+          <button type="button" class="mini-btn ${ctrl.allowNewIssues ? "active-toggle" : ""}" id="footerToggleIssuesBtn">
+            ${ctrl.allowNewIssues ? "✓ Murojaat qo‘shish: Ochiq" : "✕ Murojaat qo‘shish: Yopiq"}
+          </button>
+          <button type="button" class="mini-btn ${ctrl.allowVoting ? "active-toggle" : ""}" id="footerToggleVotingBtn">
+            ${ctrl.allowVoting ? "✓ Ovoz berish: Ochiq" : "✕ Ovoz berish: Yopiq"}
+          </button>
+        </div>
+        <form id="footerAdminBannerForm" style="display:flex; gap:8px; flex-wrap:wrap;">
+          <input
+            type="text"
+            id="footerAdminBannerInput"
+            value="${escapeHtml(ctrl.bannerText || "")}"
+            placeholder="Sayt tepasiga e’lon yozing (bo‘sh qoldirilsa o‘chadi)..."
+            style="flex:1; min-width:200px;"
+          />
+          <button type="submit" class="primary-btn">Saqlash</button>
+        </form>
+      </div>
+
+      <div class="sub-panel-box">
+        <strong style="display:block; margin-bottom:8px;">👀 Odamlar nima qilyapti?</strong>
+        <div class="comment-list">
+          ${
+            recentLogs.length
+              ? recentLogs
+                  .map(
+                    (entry) => `
+                    <div class="comment-item" style="display:flex; justify-content:space-between; gap:8px;">
+                      <span><strong>${escapeHtml(entry.user)}</strong> — ${escapeHtml(entry.action)}</span>
+                      <span class="muted-text">${escapeHtml(entry.time)}</span>
+                    </div>
+                  `
+                  )
+                  .join("")
+              : `<div class="muted-text">Hozircha harakatlar yo‘q.</div>`
+          }
+        </div>
+      </div>
+    `;
+
+    modalEl.classList.remove("hidden");
+  };
+
+  if (typeof renderAll === "function") {
+    const prevRenderAll = renderAll;
+    window.renderAll = function () {
+      prevRenderAll();
+      syncSiteAccessControls();
+    };
+  }
+
+  document.addEventListener("click", (e) => {
+    if (e.target.closest("#footerToggleIssuesBtn")) {
+      state.siteControls.allowNewIssues = !state.siteControls.allowNewIssues;
+      pushAdminActivity(
+        typeof getCurrentAdmin === "function" ? getCurrentAdmin()?.name : "",
+        `Yangi murojaat qo‘shishni ${state.siteControls.allowNewIssues ? "ochdi" : "yopdi"}`
+      );
+      if (typeof saveState === "function") saveState();
+      syncSiteAccessControls();
+      window.openAdminPanelModal();
+      return;
+    }
+
+    if (e.target.closest("#footerToggleVotingBtn")) {
+      state.siteControls.allowVoting = !state.siteControls.allowVoting;
+      pushAdminActivity(
+        typeof getCurrentAdmin === "function" ? getCurrentAdmin()?.name : "",
+        `Ovoz berishni ${state.siteControls.allowVoting ? "ochdi" : "yopdi"}`
+      );
+      if (typeof saveState === "function") saveState();
+      syncSiteAccessControls();
+      window.openAdminPanelModal();
+      return;
+    }
+
+    const voteBtn = e.target.closest("[data-vote-id]");
+    if (voteBtn && !voteBtn.disabled) {
+      const issueId = voteBtn.dataset.voteId;
+      const foundIssue = Array.isArray(state.issues) ? state.issues.find((x) => x.id === issueId) : null;
+      pushAdminActivity(
+        typeof getCurrentAdmin === "function" ? getCurrentAdmin()?.name : "",
+        `#${issueId} (${foundIssue?.title || "murojaat"}) bo‘yicha ovoz tugmasini bosdi`
+      );
+      if (typeof saveState === "function") saveState();
+    }
+  });
+
+  document.addEventListener("submit", (e) => {
+    if (e.target && e.target.id === "footerAdminBannerForm") {
+      e.preventDefault();
+      const inputEl = document.getElementById("footerAdminBannerInput");
+      const newNotice = inputEl ? inputEl.value.trim() : "";
+      state.siteControls.bannerText = newNotice;
+      pushAdminActivity(
+        typeof getCurrentAdmin === "function" ? getCurrentAdmin()?.name : "",
+        newNotice ? "Sayt e’lonini yangiladi" : "Sayt e’lonini o‘chirdi"
+      );
+      if (typeof saveState === "function") saveState();
+      syncSiteAccessControls();
+      window.openAdminPanelModal();
+      if (typeof showToast === "function") {
+        showToast(newNotice ? "E’lon saqlandi" : "E’lon o‘chirildi");
+      }
+    }
+  });
+
+  syncSiteAccessControls();
+})();
+/* =========================================================
+   ADMIN PANEL YAXLIT QO'SHIMCHASI (FAYL ENG OXIRIGA)
+   - Saytni boshqarish (murojaat qo'shish, ovoz berish, e'lon)
+   - Odamlar nima qilyapti? (so'nggi harakatlar + tozalash)
+   - Tumanlar bo'yicha ochiq murojaatlar (tez o'tish)
+   ========================================================= */
+
+(function initAdminPanelAddonAtEnd() {
+  if (typeof state === "undefined") return;
+
+  if (!state.siteControls) {
+    state.siteControls = {
+      allowNewIssues: true,
+      allowVoting: true,
+      bannerText: ""
+    };
+  }
+
+  if (!Array.isArray(state.activityLog)) {
+    state.activityLog = [
+      { time: "18:45", user: "Odilbek R.", action: "#E-802 muammosiga ovoz berdi" },
+      { time: "18:20", user: "Hamidov A.", action: "#W-104 holatini O‘rganilmoqda ga o‘zgartirdi" },
+      { time: "17:55", user: "Hamdov A.", action: "Smena topshirish xulosasini yangiladi" }
+    ];
+  }
+
+  function recordAction(actor, text) {
+    const who =
+      actor ||
+      (typeof getCurrentAdmin === "function" ? getCurrentAdmin()?.name : "") ||
+      "Foydalanuvchi";
+    const time = new Date().toLocaleTimeString("uz-UZ", {
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+    state.activityLog.unshift({ time, user: who, action: text });
+    if (state.activityLog.length > 20) state.activityLog.length = 20;
+  }
+
+  function applyControlsToPage() {
+    const ctrl = state.siteControls || {
+      allowNewIssues: true,
+      allowVoting: true,
+      bannerText: ""
+    };
+
+    const addBtn = document.getElementById("openAddModalBtn");
+    if (addBtn) {
+      addBtn.disabled = !ctrl.allowNewIssues;
+      addBtn.style.opacity = ctrl.allowNewIssues ? "1" : "0.55";
+      addBtn.title = ctrl.allowNewIssues ? "" : "Admin tomonidan vaqtincha yopilgan";
+    }
+
+    document.querySelectorAll(".vote-btn").forEach((btn) => {
+      btn.disabled = !ctrl.allowVoting;
+      btn.style.opacity = ctrl.allowVoting ? "1" : "0.55";
+    });
+
+    let banner = document.getElementById("adminTopNoticeBar");
+    if (!banner) {
+      banner = document.createElement("div");
+      banner.id = "adminTopNoticeBar";
+      banner.className = "frozen-banner hidden";
+      const actionBar = document.querySelector(".action-bar");
+      actionBar?.parentNode?.insertBefore(banner, actionBar);
+    }
+
+    if (ctrl.bannerText && ctrl.bannerText.trim()) {
+      banner.innerHTML = `<span>📢 <strong>Admin e’loni:</strong> ${escapeHtml(ctrl.bannerText.trim())}</span>`;
+      banner.classList.remove("hidden");
+    } else {
+      banner.classList.add("hidden");
+    }
+  }
+
+  function getDistrictsList() {
+    if (Array.isArray(SIRDARYO_DISTRICTS) && SIRDARYO_DISTRICTS.length) {
+      return SIRDARYO_DISTRICTS;
+    }
+    if (Array.isArray(state.mahallas)) {
+      return [...new Set(state.mahallas.map((m) => m.district).filter(Boolean))];
+    }
+    return [];
+  }
+
+  window.openAdminPanelModal = function () {
+    const curUser = typeof getCurrentAdmin === "function" ? getCurrentAdmin() : null;
+    const allowed =
+      typeof hasAdminPanelAccess === "function"
+        ? hasAdminPanelAccess(curUser)
+        : Boolean(curUser && (curUser.isSuper || /admin/i.test(curUser.role || "")));
+
+    if (!allowed) {
+      if (typeof showToast === "function") {
+        showToast("⛔ Bu bo‘lim faqat Bosh Admin yoki O‘quvchi Admin uchun!");
+      }
+      return;
+    }
+
+    const ctrl = state.siteControls;
+    const logs = (state.activityLog || []).slice(0, 6);
+    const districts = getDistrictsList();
+
+    const districtButtonsHtml = districts
+      .map((dist) => {
+        const openCount = (state.issues || []).filter(
+          (i) => i.district === dist && i.status !== "Hal qilindi"
+        ).length;
+        const urgentOpen = (state.issues || []).filter(
+          (i) =>
+            i.district === dist &&
+            i.priority === "Juda Shoshilinch" &&
+            i.status !== "Hal qilindi"
+        ).length;
+
+        return `
+          <button
+            type="button"
+            class="mini-btn ${urgentOpen > 0 ? "active-toggle" : ""}"
+            data-jump-district="${escapeHtml(dist)}"
+          >
+            📍 ${escapeHtml(dist)}: ${openCount} ochiq${urgentOpen > 0 ? ` (${urgentOpen} shoshilinch)` : ""}
+          </button>
+        `;
+      })
+      .join("");
+
+    const titleEl = document.getElementById("adminPanelModalTitle");
+    const bodyEl = document.getElementById("adminPanelModalBody");
+    const modalEl = document.getElementById("adminPanelModal");
+    if (!bodyEl || !modalEl) return;
+
+    if (titleEl) {
+      titleEl.textContent = `Admin Panel • ${curUser.name}`;
+    }
+
+    bodyEl.innerHTML = `
+      <div class="sub-panel-box" style="margin-bottom:12px;">
+        <strong style="display:block; margin-bottom:8px;">⚙️ Saytni boshqarish</strong>
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+          <button type="button" class="mini-btn ${ctrl.allowNewIssues ? "active-toggle" : ""}" id="endToggleIssuesBtn">
+            ${ctrl.allowNewIssues ? "✓ Murojaat qo‘shish: Ochiq" : "✕ Murojaat qo‘shish: Yopiq"}
+          </button>
+          <button type="button" class="mini-btn ${ctrl.allowVoting ? "active-toggle" : ""}" id="endToggleVotingBtn">
+            ${ctrl.allowVoting ? "✓ Ovoz berish: Ochiq" : "✕ Ovoz berish: Yopiq"}
+          </button>
+        </div>
+        <form id="endAdminBannerForm" style="display:flex; gap:8px; flex-wrap:wrap;">
+          <input
+            type="text"
+            id="endAdminBannerInput"
+            value="${escapeHtml(ctrl.bannerText || "")}"
+            placeholder="Sayt tepasiga e’lon yozing (bo‘sh qoldirilsa o‘chadi)..."
+            style="flex:1; min-width:200px;"
+          />
+          <button type="submit" class="primary-btn">Saqlash</button>
+        </form>
+      </div>
+
+      <div class="sub-panel-box" style="margin-bottom:12px;">
+        <strong style="display:block; margin-bottom:8px;">🗺️ Tumanlar bo‘yicha ochiq murojaatlar</strong>
+        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+          ${districtButtonsHtml || `<span class="muted-text">Tumanlar topilmadi.</span>`}
+        </div>
+      </div>
+
+      <div class="sub-panel-box">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px;">
+          <strong>👀 Odamlar nima qilyapti?</strong>
+          <button type="button" class="mini-btn" id="endClearLogsBtn">🗑️ Tozalash</button>
+        </div>
+        <div class="comment-list">
+          ${
+            logs.length
+              ? logs
+                  .map(
+                    (item) => `
+                    <div class="comment-item" style="display:flex; justify-content:space-between; gap:8px;">
+                      <span><strong>${escapeHtml(item.user)}</strong> — ${escapeHtml(item.action)}</span>
+                      <span class="muted-text">${escapeHtml(item.time)}</span>
+                    </div>
+                  `
+                  )
+                  .join("")
+              : `<div class="muted-text">Hozircha harakatlar yo‘q.</div>`
+          }
+        </div>
+      </div>
+    `;
+
+    modalEl.classList.remove("hidden");
+  };
+
+  if (typeof renderAll === "function") {
+    const originalRenderAll = renderAll;
+    window.renderAll = function () {
+      originalRenderAll();
+      applyControlsToPage();
+    };
+  }
+
+  document.addEventListener("click", (e) => {
+    if (e.target.closest("#endToggleIssuesBtn")) {
+      state.siteControls.allowNewIssues = !state.siteControls.allowNewIssues;
+      recordAction(
+        null,
+        `Yangi murojaat qo‘shishni ${state.siteControls.allowNewIssues ? "ochdi" : "yopdi"}`
+      );
+      if (typeof saveState === "function") saveState();
+      applyControlsToPage();
+      window.openAdminPanelModal();
+      return;
+    }
+
+    if (e.target.closest("#endToggleVotingBtn")) {
+      state.siteControls.allowVoting = !state.siteControls.allowVoting;
+      recordAction(
+        null,
+        `Ovoz berishni ${state.siteControls.allowVoting ? "ochdi" : "yopdi"}`
+      );
+      if (typeof saveState === "function") saveState();
+      applyControlsToPage();
+      window.openAdminPanelModal();
+      return;
+    }
+
+    if (e.target.closest("#endClearLogsBtn")) {
+      state.activityLog = [];
+      if (typeof saveState === "function") saveState();
+      window.openAdminPanelModal();
+      if (typeof showToast === "function") showToast("Harakatlar ro‘yxati tozalandi");
+      return;
+    }
+
+    const jumpBtn = e.target.closest("[data-jump-district]");
+    if (jumpBtn) {
+      state.selectedDistrict = jumpBtn.dataset.jumpDistrict;
+      if (typeof renderAll === "function") renderAll();
+      document.getElementById("adminPanelModal")?.classList.add("hidden");
+      document.getElementById("issuesSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (typeof showToast === "function") showToast(`Hudud: ${state.selectedDistrict}`);
+      return;
+    }
+
+    const voteBtn = e.target.closest("[data-vote-id]");
+    if (voteBtn && !voteBtn.disabled) {
+      const id = voteBtn.dataset.voteId;
+      const issue = Array.isArray(state.issues) ? state.issues.find((x) => x.id === id) : null;
+      recordAction(null, `#${id} (${issue?.title || "murojaat"}) ovoz tugmasini bosdi`);
+      if (typeof saveState === "function") saveState();
+    }
+  });
+
+  document.addEventListener("submit", (e) => {
+    if (e.target && e.target.id === "endAdminBannerForm") {
+      e.preventDefault();
+      const input = document.getElementById("endAdminBannerInput");
+      const val = input ? input.value.trim() : "";
+      state.siteControls.bannerText = val;
+      recordAction(null, val ? "Sayt e’lonini yangiladi" : "Sayt e’lonini o‘chirdi");
+      if (typeof saveState === "function") saveState();
+      applyControlsToPage();
+      window.openAdminPanelModal();
+      if (typeof showToast === "function") {
+        showToast(val ? "E’lon saqlandi" : "E’lon o‘chirildi");
+      }
+    }
+  });
+
+  applyControlsToPage();
+})();
+/* =========================================================
+   ADMIN PANEL QO'SHIMCHASI — 3-QISM (FAYL ENG OXIRIGA)
+   1. Eng birinchi ochiq murojaat holatini tezkor yangilash
+   2. Sayt boshqaruv sozlamalarini standartga qaytarish
+   ========================================================= */
+
+(function extendAdminPanelQuickStatusAndReset() {
+  if (typeof state === "undefined" || typeof window.openAdminPanelModal !== "function") return;
+
+  const prevOpenAdminPanelModal = window.openAdminPanelModal;
+
+  function getFirstOpenIssue() {
+    return Array.isArray(state.issues)
+      ? state.issues.find((item) => item.status !== "Hal qilindi") || null
+      : null;
+  }
+
+  window.openAdminPanelModal = function () {
+    prevOpenAdminPanelModal();
+
+    const modalEl = document.getElementById("adminPanelModal");
+    const bodyEl = document.getElementById("adminPanelModalBody");
+    if (!modalEl || modalEl.classList.contains("hidden") || !bodyEl) return;
+
+    const firstControlBox = bodyEl.querySelector(".sub-panel-box");
+    if (firstControlBox && !firstControlBox.querySelector("#endResetSiteControlsBtn")) {
+      const resetBtn = document.createElement("button");
+      resetBtn.type = "button";
+      resetBtn.id = "endResetSiteControlsBtn";
+      resetBtn.className = "mini-btn";
+      resetBtn.style.marginLeft = "auto";
+      resetBtn.textContent = "↺ Standart holat";
+
+      const btnRow = firstControlBox.querySelector("div");
+      if (btnRow) {
+        btnRow.appendChild(resetBtn);
+      } else {
+        firstControlBox.appendChild(resetBtn);
+      }
+    }
+
+    const firstOpen = getFirstOpenIssue();
+    if (!bodyEl.querySelector("[data-admin-quick-issue-box]")) {
+      const quickBox = document.createElement("div");
+      quickBox.className = "sub-panel-box";
+      quickBox.setAttribute("data-admin-quick-issue-box", "1");
+      quickBox.style.marginBottom = "12px";
+
+      if (firstOpen) {
+        quickBox.innerHTML = `
+          <strong style="display:block; margin-bottom:6px;">⚡ Tezkor holat: #${escapeHtml(firstOpen.id)} — ${escapeHtml(firstOpen.title)}</strong>
+          <div class="muted-text" style="margin-bottom:8px;">📍 ${escapeHtml(firstOpen.district)} • Joriy holat: <strong>${escapeHtml(firstOpen.status)}</strong></div>
+          <div style="display:flex; flex-wrap:wrap; gap:6px;">
+            <button type="button" class="mini-btn" data-quick-set-status="Brigada yuborildi" data-quick-issue-id="${escapeHtml(firstOpen.id)}">🛠️ Brigada yuborildi</button>
+            <button type="button" class="mini-btn active-toggle" data-quick-set-status="Hal qilindi" data-quick-issue-id="${escapeHtml(firstOpen.id)}">✓ Hal qilindi</button>
+          </div>
+        `;
+      } else {
+        quickBox.innerHTML = `
+          <strong style="display:block; margin-bottom:4px;">⚡ Tezkor holat</strong>
+          <div class="muted-text">Ayni paytda barcha murojaatlar hal qilingan.</div>
+        `;
+      }
+
+      const logBox = bodyEl.querySelectorAll(".sub-panel-box")[bodyEl.querySelectorAll(".sub-panel-box").length - 1];
+      if (logBox) {
+        logBox.insertAdjacentElement("beforebegin", quickBox);
+      } else {
+        bodyEl.appendChild(quickBox);
+      }
+    }
+  };
+
+  document.addEventListener("click", (e) => {
+    if (e.target.closest("#endResetSiteControlsBtn")) {
+      state.siteControls = {
+        allowNewIssues: true,
+        allowVoting: true,
+        bannerText: ""
+      };
+      if (typeof saveState === "function") saveState();
+      if (typeof renderAll === "function") renderAll();
+      window.openAdminPanelModal();
+      if (typeof showToast === "function") showToast("Sayt boshqaruv sozlamalari standartga qaytarildi");
+      return;
+    }
+
+    const quickStatusBtn = e.target.closest("[data-quick-set-status]");
+    if (quickStatusBtn) {
+      const issueId = quickStatusBtn.dataset.quickIssueId;
+      const nextStatus = quickStatusBtn.dataset.quickSetStatus;
+      const targetIssue = Array.isArray(state.issues)
+        ? state.issues.find((i) => i.id === issueId)
+        : null;
+
+      if (targetIssue && nextStatus) {
+        targetIssue.status = nextStatus;
+        if (Array.isArray(state.activityLog)) {
+          const who = (typeof getCurrentAdmin === "function" ? getCurrentAdmin()?.name : "") || "Admin";
+          const clock = new Date().toLocaleTimeString("uz-UZ", { hour: "2-digit", minute: "2-digit" });
+          state.activityLog.unshift({
+            time: clock,
+            user: who,
+            action: `#${targetIssue.id} holatini "${nextStatus}" ga o‘zgartirdi`
+          });
+          if (state.activityLog.length > 20) state.activityLog.length = 20;
+        }
+        if (typeof saveState === "function") saveState();
+        if (typeof renderAll === "function") renderAll();
+        window.openAdminPanelModal();
+        if (typeof showToast === "function") showToast(`#${targetIssue.id} -> ${nextStatus}`);
+      }
+    }
+  });
+})();

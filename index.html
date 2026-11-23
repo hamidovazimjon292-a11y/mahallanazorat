@@ -3,21 +3,93 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MahallaNazorat — Shahar va Mahalla Infratuzilmasi Monitoring Tizimi (V5)</title>
+  <title>MahallaNazorat — Sirdaryo Viloyati Infratuzilmasi Monitoring Tizimi (V5)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./style-v5.css">
 </head>
 <body>
-  <div class="app-shell">
+  <!-- Kirish oynasi (Login Screen) -->
+  <div class="auth-overlay" id="authOverlay">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <div class="brand-logo">🛡️</div>
+        <div>
+          <h1 class="auth-title">MahallaNazorat • Sirdaryo</h1>
+          <p class="muted-text">Tizimga o‘z ism-familiyangiz va rolingiz bilan kiring</p>
+        </div>
+      </div>
+
+      <form id="loginForm" class="auth-form">
+        <div class="form-group">
+          <label for="loginFullName">Ism va familiyangiz *</label>
+          <input
+            type="text"
+            id="loginFullName"
+            placeholder="Masalan: Hamidov A. yoki Hamdov A."
+            autocomplete="name"
+            required
+          />
+        </div>
+
+        <div class="form-row two-col">
+          <div class="form-group">
+            <label for="loginRole">Kirish darajasi / Rol *</label>
+            <select id="loginRole">
+              <option value="Oddiy foydalanuvchi">Oddiy foydalanuvchi (Faqat ko‘rish/ovoz)</option>
+              <option value="O‘quvchi Admin">O‘quvchi Admin (Admin panel huquqi)</option>
+              <option value="Bosh Admin">Bosh Admin (To‘liq boshqaruv)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="loginAdminCode">Admin kodi (Adminlar uchun)</label>
+            <input type="password" id="loginAdminCode" placeholder="Masalan: 2026" />
+          </div>
+        </div>
+
+        <div class="form-row two-col">
+          <div class="form-group">
+            <label for="loginDistrict">Hudud / Tuman</label>
+            <select id="loginDistrict">
+              <option value="Barcha tumanlar">Barcha tuman va shaharlar</option>
+              <option value="Guliston sh.">Guliston shahri</option>
+              <option value="Yangiyer sh.">Yangiyer shahri</option>
+              <option value="Shirin sh.">Shirin shahri</option>
+              <option value="Boyovut">Boyovut tumani</option>
+              <option value="Guliston tumani">Guliston tumani</option>
+              <option value="Mirzaobod">Mirzaobod tumani</option>
+              <option value="Oqoltin">Oqoltin tumani</option>
+              <option value="Sardoba">Sardoba tumani</option>
+              <option value="Sayxunobod">Sayxunobod tumani</option>
+              <option value="Sirdaryo tumani">Sirdaryo tumani</option>
+              <option value="Xovos">Xovos tumani</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="loginPhone">Telefon (ixtiyoriy)</label>
+            <input type="text" id="loginPhone" placeholder="+998 90 123-45-67" />
+          </div>
+        </div>
+
+        <button type="submit" class="primary-btn auth-submit-btn">Profilga kirish →</button>
+      </form>
+
+      <div class="quick-accounts-box">
+        <div class="muted-text" style="margin-bottom:8px;">Mavjud profillar (bir bosishda kirish):</div>
+        <div class="quick-accounts-list" id="quickAccountsList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-shell hidden" id="appShell">
     <!-- Yon menyu (Sidebar) -->
     <aside class="sidebar" id="sidebar">
       <div class="brand-box">
         <div class="brand-logo">🛡️</div>
         <div class="brand-text">
           <div class="brand-title">MahallaNazorat</div>
-          <span class="brand-badge">FAOL TIZIM • V5</span>
+          <span class="brand-badge">SIRDARYO • V5</span>
         </div>
         <button class="icon-btn mobile-only" id="closeSidebarBtn" aria-label="Menyuni yopish">✕</button>
       </div>
@@ -52,9 +124,9 @@
           <span class="nav-icon">🗓️</span>
           <span>Navbatchilik &amp; Reja</span>
         </button>
-        <button class="nav-item" data-view="admins">
+        <button class="nav-item admin-only-nav" data-view="admins">
           <span class="nav-icon">👥</span>
-          <span>Adminlar</span>
+          <span>Admin Panel</span>
         </button>
         <button class="nav-item" data-view="adminNotesReport">
           <span class="nav-icon">📝</span>
@@ -75,7 +147,7 @@
           <div class="avatar" id="currentUserAvatar">HA</div>
           <div class="user-meta">
             <div class="user-name" id="currentUserName">Hamdov A.</div>
-            <div class="user-role" id="currentUserRole">Bosh Admin • Toshkent</div>
+            <div class="user-role" id="currentUserRole">Bosh Admin • Sirdaryo</div>
           </div>
           <button class="icon-btn small" id="resetDemoBtn" title="Boshlang‘ich ma’lumotlarga qaytarish">↺</button>
         </div>
@@ -87,9 +159,9 @@
       <!-- Yuqori panel -->
       <header class="topbar" data-section-id="topbar">
         <div class="topbar-left">
-          <button class="icon-btn mobile-only" id="openSidebarBtn" aria-label="Menyuni ochish">☰</button>
+          <button class="icon-btn" id="openSidebarBtn" aria-label="Admin menyuni ochish" title="Admin Panel (Bosh Admin / O‘quvchi Admin)">☰</button>
           <div class="breadcrumb">
-            <span>Boshqaruv paneli</span>
+            <span>Sirdaryo viloyati</span>
             <span>›</span>
             <strong id="currentBreadcrumb">Bosh sahifa</strong>
           </div>
@@ -98,9 +170,10 @@
         <div class="topbar-right">
           <div class="role-switcher-wrap">
             <label for="activeAdminSelect" class="muted-text" style="font-size:0.78rem;">Faol profil:</label>
-            <select id="activeAdminSelect" class="select-control small-select" aria-label="Faol admin profili"></select>
+            <select id="activeAdminSelect" class="select-control small-select" aria-label="Faol profil"></select>
             <span class="admin-status-pill active-pill" id="activeAdminStatusBadge">Faol</span>
           </div>
+          <button class="pill-btn" id="logoutBtn" title="Profildan chiqish">🚪 Chiqish</button>
           <button class="pill-btn" id="langToggleBtn" title="Tilni almashtirish">O‘Z</button>
           <button class="pill-btn" id="themeToggleBtn" title="Tungi/Kunduzgi rejim">🌙 Tungi</button>
           <div class="notification-wrap">
@@ -122,7 +195,7 @@
 
       <!-- Muzlatilgan admin ogohlantirishi -->
       <div class="frozen-banner hidden" id="frozenAdminBanner">
-        <span>❄️ <strong>Diqqat:</strong> Joriy admin profili vaqtinchalik muzlatilgan. Ko‘rish mumkin, lekin o‘zgartirish kiritish uchun profilni faollashtiring.</span>
+        <span>❄️ <strong>Diqqat:</strong> Joriy profil vaqtinchalik muzlatilgan. Ko‘rish mumkin, lekin o‘zgartirish kiritish uchun profilni faollashtiring.</span>
         <button type="button" class="mini-btn" id="unfreezeCurrentAdminBtn">Faollashtirish</button>
       </div>
 
@@ -130,18 +203,24 @@
       <section class="action-bar" data-section-id="actionBar">
         <div class="search-box">
           <span class="search-icon">🔍</span>
-          <input type="text" id="searchInput" placeholder="Muammo, ID (#W-104) yoki manzilni qidiring..." />
+          <input type="text" id="searchInput" placeholder="Muammo, ID (#W-104), brigada, javobgar yoki manzilni qidiring..." />
           <button class="clear-search hidden" id="clearSearchBtn" aria-label="Qidiruvni tozalash">✕</button>
         </div>
 
         <div class="action-buttons">
           <select id="topDistrictSelect" class="select-control" aria-label="Hudud bo‘yicha filtrlash">
-            <option value="all">Hududlar: Barchasi</option>
-            <option value="Yunusobod">Yunusobod tumani</option>
-            <option value="Chilonzor">Chilonzor tumani</option>
-            <option value="Mirzo Ulug‘bek">Mirzo Ulug‘bek tumani</option>
-            <option value="Uchtepa">Uchtepa tumani</option>
-            <option value="Yakkasaroy">Yakkasaroy tumani</option>
+            <option value="all">Sirdaryo hududlari: Barchasi</option>
+            <option value="Guliston sh.">Guliston shahri</option>
+            <option value="Yangiyer sh.">Yangiyer shahri</option>
+            <option value="Shirin sh.">Shirin shahri</option>
+            <option value="Boyovut">Boyovut tumani</option>
+            <option value="Guliston tumani">Guliston tumani</option>
+            <option value="Mirzaobod">Mirzaobod tumani</option>
+            <option value="Oqoltin">Oqoltin tumani</option>
+            <option value="Sardoba">Sardoba tumani</option>
+            <option value="Sayxunobod">Sayxunobod tumani</option>
+            <option value="Sirdaryo tumani">Sirdaryo tumani</option>
+            <option value="Xovos">Xovos tumani</option>
           </select>
 
           <button class="secondary-btn" id="printReportBtn">🖨️ Chop etish</button>
@@ -175,22 +254,22 @@
 
       <!-- Asosiy 2 ustunli ish maydoni -->
       <main class="workspace-grid" id="workspaceGrid" data-section-id="workspaceGrid">
-        <!-- Chap/Markaziy ustun: Muammolar -->
         <section class="panel main-panel" id="issuesSection">
           <div class="panel-header">
             <div>
-              <h1 class="panel-title">Faol Infratuzilma Muammolari</h1>
-              <p class="panel-subtitle">Tumanlar, holat va xizmat turlari bo‘yicha murojaatlarni boshqaring</p>
+              <h1 class="panel-title">Sirdaryo Viloyati Infratuzilma Muammolari</h1>
+              <p class="panel-subtitle">Tuman, shahar, brigada, javobgar shaxs, SLA muddati va holat bo‘yicha boshqaring</p>
             </div>
             <span class="result-chip" id="resultCountLabel">0 ta natija</span>
           </div>
 
-          <!-- Tezkor filtrlash presetlari -->
           <div class="preset-bar" id="presetBar">
             <span class="preset-label">Tezkor filtr:</span>
             <button type="button" class="preset-btn active" data-preset="all">Barcha murojaatlar</button>
             <button type="button" class="preset-btn urgent-preset" data-preset="urgent">🚨 Juda Shoshilinch</button>
             <button type="button" class="preset-btn" data-preset="brigade">🛠️ Brigada yuborilgan</button>
+            <button type="button" class="preset-btn" data-preset="sla_alert">⏱️ SLA yaqin / o‘tgan</button>
+            <button type="button" class="preset-btn" data-preset="weather_night">🌧️🌙 Ob-havo / Tungi</button>
             <button type="button" class="preset-btn" data-preset="topvotes">🔥 Eng ko‘p ovozli</button>
             <button type="button" class="preset-btn" data-preset="unread_admin">👁️ Men o‘qimaganlar</button>
           </div>
@@ -224,6 +303,7 @@
               <option value="newest">Saralash: Eng yangilari</option>
               <option value="votes">Eng ko‘p ovozli</option>
               <option value="priority">Muhimligi bo‘yicha</option>
+              <option value="sla">SLA muddati bo‘yicha (qisqasi)</option>
             </select>
 
             <button class="ghost-btn" id="resetFiltersBtn">Filtrlarni tozalash</button>
@@ -232,12 +312,11 @@
           <div class="issues-list" id="issuesList"></div>
         </section>
 
-        <!-- O‘ng ustun: Tezkor xarita, vizual statistika diagrammasi va hisobotlar -->
         <aside class="side-panel" id="sidePanel">
           <div class="panel" id="mapSection">
             <div class="panel-header compact">
               <div>
-                <h2 class="panel-title small-title">Tezkor Xarita</h2>
+                <h2 class="panel-title small-title">Sirdaryo Tezkor Xaritasi</h2>
                 <p class="panel-subtitle">Nuqtani bosing — murojaatni ko‘ring</p>
               </div>
               <button class="mini-btn" id="resetMapFocusBtn">Barcha nuqtalar</button>
@@ -245,19 +324,18 @@
 
             <div class="map-canvas" id="mapCanvas">
               <div class="map-grid-overlay"></div>
-              <div class="map-city-watermark">TOSHKENT SHAHRI</div>
+              <div class="map-city-watermark">SIRDARYO VILOYATI</div>
               <div id="mapPinsContainer"></div>
             </div>
 
             <div class="map-selected-card" id="mapSelectedInfo"></div>
           </div>
 
-          <!-- Vizual statistika diagrammasi -->
           <div class="panel" id="statsSection">
             <div class="panel-header compact">
               <div>
-                <h2 class="panel-title small-title">Yo‘nalishlar Bo‘yicha Diagramma</h2>
-                <p class="panel-subtitle">Muammolar soni va hal qilinish ulushi</p>
+                <h2 class="panel-title small-title">Yo‘nalishlar va Tumanlar Diagrammasi</h2>
+                <p class="panel-subtitle">Muammolar soni va hududlar kesimi</p>
               </div>
               <span class="muted-text" id="overallCompletionBadge">0%</span>
             </div>
@@ -275,66 +353,89 @@
         </aside>
       </main>
 
-      <!-- Adminlar boshqaruvi (Admin berish, vaqtinchalik muzlatish va nazorat) -->
+      <!-- Adminlar va foydalanuvchilar boshqaruvi (Faqat Bosh Admin / O'quvchi Admin uchun) -->
       <section class="panel" id="adminsSection" data-section-id="adminsSection">
         <div class="panel-header">
           <div>
-            <h2 class="panel-title">Adminlar va Nazoratchilar Boshqaruvi</h2>
-            <p class="panel-subtitle">Admin huquqi bering, vaqtinchalik muzlating yoki qayta faollashtiring</p>
+            <h2 class="panel-title">Admin Panel — Bosh Admin va O‘quvchi Admin Boshqaruvi</h2>
+            <p class="panel-subtitle">Yangi profil qo‘shing, tuman biriktiring, profilga kiring yoki vaqtinchalik muzlating</p>
           </div>
-          <span class="result-chip" id="adminCountChip">0 ta admin</span>
+          <span class="result-chip" id="adminCountChip">0 ta profil</span>
         </div>
 
         <form id="grantAdminForm" class="admin-grant-form">
-          <input type="text" id="newAdminName" placeholder="Ism familiya (masalan: Azizbek Rustamov)" required />
+          <input type="text" id="newAdminName" placeholder="Ism familiya (masalan: Hamidov A.)" required />
           <input type="text" id="newAdminPhone" placeholder="Telefon (masalan: +998 90 777-11-22)" />
           <select id="newAdminDistrict" class="select-control small-select">
-            <option value="Barcha tumanlar">Barcha tumanlar</option>
-            <option value="Yunusobod">Yunusobod</option>
-            <option value="Chilonzor">Chilonzor</option>
-            <option value="Mirzo Ulug‘bek">Mirzo Ulug‘bek</option>
-            <option value="Uchtepa">Uchtepa</option>
-            <option value="Yakkasaroy">Yakkasaroy</option>
+            <option value="Barcha tumanlar">Barcha tuman va shaharlar</option>
+            <option value="Guliston sh.">Guliston shahri</option>
+            <option value="Yangiyer sh.">Yangiyer shahri</option>
+            <option value="Shirin sh.">Shirin shahri</option>
+            <option value="Boyovut">Boyovut tumani</option>
+            <option value="Guliston tumani">Guliston tumani</option>
+            <option value="Mirzaobod">Mirzaobod tumani</option>
+            <option value="Oqoltin">Oqoltin tumani</option>
+            <option value="Sardoba">Sardoba tumani</option>
+            <option value="Sayxunobod">Sayxunobod tumani</option>
+            <option value="Sirdaryo tumani">Sirdaryo tumani</option>
+            <option value="Xovos">Xovos tumani</option>
           </select>
           <select id="newAdminRole" class="select-control small-select">
-            <option value="Admin (O‘qish &amp; Nazorat)">Admin (O‘qish &amp; Nazorat)</option>
-            <option value="Katta Admin (To‘liq boshqaruv)">Katta Admin (To‘liq boshqaruv)</option>
+            <option value="O‘quvchi Admin">O‘quvchi Admin (Admin panel huquqi)</option>
+            <option value="Bosh Admin">Bosh Admin (To‘liq boshqaruv)</option>
+            <option value="Oddiy foydalanuvchi">Oddiy foydalanuvchi (Admin panelsiz)</option>
           </select>
-          <button type="submit" class="primary-btn">+ Admin berish</button>
+          <button type="submit" class="primary-btn">+ Profil qo‘shish</button>
         </form>
 
         <div class="admins-grid" id="adminsGrid"></div>
       </section>
 
-      <!-- Admin shaxsiy eslatmalari va Kunlik admin hisoboti -->
+      <!-- Shaxsiy eslatmalar, Kunlik hisobot va Smena topshirish -->
       <section class="panel" id="adminNotesReportSection" data-section-id="adminNotesReportSection">
         <div class="panel-header">
           <div>
-            <h2 class="panel-title">Admin Shaxsiy Eslatmalari va Kunlik Admin Hisoboti</h2>
-            <p class="panel-subtitle" id="notesSubtitle">Faol adminning shaxsiy bloknoti va barcha adminlarning kunlik ko‘rsatkichlari</p>
+            <h2 class="panel-title">Shaxsiy Eslatmalar, Kunlik Hisobot va Smena Topshirish</h2>
+            <p class="panel-subtitle" id="notesSubtitle">Faol foydalanuvchining shaxsiy bloknoti, kunlik ko‘rsatkichlar va navbatchilik topshiruv xulosasi</p>
           </div>
           <span class="result-chip" id="adminNotesCountChip">0 ta eslatma</span>
         </div>
 
         <div class="notes-report-layout">
-          <!-- Admin uchun shaxsiy eslatmalar -->
           <div class="sub-panel-box">
             <h3 class="sub-block-title">📓 Shaxsiy Eslatmalar (<span id="notesOwnerLabel">Hamdov A.</span>)</h3>
             <form id="addPersonalNoteForm" class="inline-task-form">
-              <input type="text" id="personalNoteInput" placeholder="Shaxsiy eslatma yozing (masalan: 11:00 da brigada bilan bog‘lanish)..." required />
+              <input type="text" id="personalNoteInput" placeholder="Shaxsiy eslatma yozing..." required />
               <button type="submit" class="primary-btn">+ Saqlash</button>
             </form>
             <div class="personal-notes-list" id="personalNotesList"></div>
           </div>
 
-          <!-- Kunlik admin hisoboti -->
           <div class="sub-panel-box">
             <div class="report-box-top">
-              <h3 class="sub-block-title" style="margin-bottom:0;">📈 Kunlik Admin Hisoboti</h3>
+              <h3 class="sub-block-title" style="margin-bottom:0;">📈 Kunlik Faoliyat Hisoboti</h3>
               <span class="muted-text" id="dailyReportDateLabel">Bugun</span>
             </div>
             <div class="daily-report-list" id="dailyAdminReportList" style="margin-top:10px;"></div>
           </div>
+        </div>
+
+        <div class="sub-panel-box" id="shiftHandoverBox" style="margin-top:16px;">
+          <div class="report-box-top" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <h3 class="sub-block-title" style="margin-bottom:0;">🔄 Smena Topshirish (Keyingi Navbatchiga Qisqa Xulosa)</h3>
+            <button type="button" class="mini-btn" id="copyHandoverBtn">📋 Xulosani nusxalash</button>
+          </div>
+          <div id="shiftAutoSummary" class="muted-text" style="margin-top:8px; font-size:0.86rem;"></div>
+          <form id="saveHandoverForm" class="inline-task-form" style="margin-top:10px;">
+            <input
+              type="text"
+              id="handoverNoteInput"
+              placeholder="Nimaga e’tibor berish kerak?..."
+              required
+            />
+            <button type="submit" class="primary-btn">Smena xulosasini saqlash</button>
+          </form>
+          <div id="shiftSavedDisplay" class="report-item" style="margin-top:10px;"></div>
         </div>
       </section>
 
@@ -343,7 +444,7 @@
         <div class="panel-header">
           <div>
             <h2 class="panel-title">Haftalik Navbatchilik Jadvali va Vazifalar Rejasi</h2>
-            <p class="panel-subtitle">Brigadalar navbatchiligi va kunlik nazorat vazifalarini boshqaring</p>
+            <p class="panel-subtitle">Sirdaryo viloyati brigadalari navbatchiligi va kunlik nazorat vazifalari</p>
           </div>
           <span class="result-chip" id="dutyProgressChip">0/0 bajarildi</span>
         </div>
@@ -357,7 +458,7 @@
           <div class="duty-column">
             <h3 class="sub-block-title">Nazorat Vazifalari Rejasi</h3>
             <form id="addTaskForm" class="inline-task-form">
-              <input type="text" id="newTaskText" placeholder="Yangi vazifa yozing (masalan: Chilonzor 6-mavze chiroqlarini tekshirish)..." required />
+              <input type="text" id="newTaskText" placeholder="Yangi vazifa yozing..." required />
               <select id="newTaskAssignee" class="select-control small-select"></select>
               <button type="submit" class="primary-btn">+ Qo‘shish</button>
             </form>
@@ -371,7 +472,7 @@
         <div class="panel-header">
           <div>
             <h2 class="panel-title">Oldin / Keyin — Ta’mirlangan Ishlar Solishtiruvi</h2>
-            <p class="panel-subtitle">Bartaraf etilgan infratuzilma muammolarining avvalgi va keyingi holati</p>
+            <p class="panel-subtitle">Sirdaryo viloyatida bartaraf etilgan infratuzilma muammolari</p>
           </div>
           <div class="ba-mode-tabs" id="baModeTabs">
             <button class="mini-btn ba-tab active" data-ba-mode="compare">Yonma-yon</button>
@@ -386,7 +487,7 @@
       <section class="panel" id="hotlinesSection" data-section-id="hotlinesSection">
         <div class="panel-header">
           <div>
-            <h2 class="panel-title">Avariya va Mas’ul Xizmatlar Tezkor Kontaktlari</h2>
+            <h2 class="panel-title">Sirdaryo Avariya va Mas’ul Xizmatlar Tezkor Kontaktlari</h2>
             <p class="panel-subtitle">Navbatchilik raqamlari, o‘rtacha javob vaqti va bir bosishda nusxalash</p>
           </div>
           <div class="category-tabs" id="hotlineFilterTabs">
@@ -405,13 +506,12 @@
       <section class="bottom-grid" id="bottomGrid" data-section-id="bottomGrid">
         <div class="panel" id="mahallasSection">
           <div class="panel-header compact">
-            <h2 class="panel-title small-title">Biriktirilgan Mahallalar</h2>
+            <h2 class="panel-title small-title">Sirdaryo Tumanlari va Mahallalar</h2>
             <span class="muted-text">Mas’ul vakillar</span>
           </div>
           <div class="mahalla-cards" id="mahallaList"></div>
         </div>
 
-        <!-- JOYLASHUV VA TARTIB SOZLAMALARI -->
         <div class="panel" id="settingsSection">
           <div class="panel-header compact">
             <div>
@@ -489,9 +589,27 @@
       </section>
 
       <footer class="footer" data-section-id="footer">
-        <span>MahallaNazorat © 2026 — Jamoatchilik infratuzilma monitoring platformasi</span>
-        <span>Muzlatish • Shaxsiy Eslatmalar • Kunlik Admin Hisoboti • Navbatchilik</span>
+        <span>MahallaNazorat Sirdaryo © 2026 — Jamoatchilik infratuzilma monitoring platformasi</span>
+        <span>11 ta Tuman va Shahar • Admin Panel Nazorati</span>
       </footer>
+    </div>
+  </div>
+
+  <!-- Admin Panel Modal (☰ tugmasi bosilganda faqat Bosh Admin / O'quvchi Admin uchun) -->
+  <div class="modal-backdrop hidden" id="adminPanelModal" role="dialog" aria-modal="true" aria-labelledby="adminPanelModalTitle">
+    <div class="modal-card wide-modal">
+      <div class="modal-header">
+        <div>
+          <span class="code-pill">ADMIN PANEL</span>
+          <h2 id="adminPanelModalTitle" class="inline-title">Boshqaruv Paneli</h2>
+        </div>
+        <button class="icon-btn" id="closeAdminPanelModalBtn" aria-label="Yopish">✕</button>
+      </div>
+      <div id="adminPanelModalBody" class="detail-body"></div>
+      <div class="modal-footer">
+        <button type="button" class="secondary-btn" id="jumpToAdminsSectionBtn">To‘liq Adminlar bo‘limiga o‘tish</button>
+        <button type="button" class="primary-btn" id="closeAdminPanelModalOkBtn">Yopish</button>
+      </div>
     </div>
   </div>
 
@@ -499,7 +617,7 @@
   <div class="modal-backdrop hidden" id="addIssueModal" role="dialog" aria-modal="true" aria-labelledby="addModalTitle">
     <div class="modal-card">
       <div class="modal-header">
-        <h2 id="addModalTitle">Yangi Muammo Qo‘shish</h2>
+        <h2 id="addModalTitle">Yangi Muammo Qo‘shish (Sirdaryo)</h2>
         <button class="icon-btn" id="closeAddModalBtn" aria-label="Yopish">✕</button>
       </div>
       <form id="addIssueForm" class="modal-form">
@@ -522,13 +640,19 @@
 
         <div class="form-row two-col">
           <div class="form-group">
-            <label for="issueDistrict">Tuman *</label>
+            <label for="issueDistrict">Tuman yoki Shahar *</label>
             <select id="issueDistrict" required>
-              <option value="Yunusobod">Yunusobod</option>
-              <option value="Chilonzor">Chilonzor</option>
-              <option value="Mirzo Ulug‘bek">Mirzo Ulug‘bek</option>
-              <option value="Uchtepa">Uchtepa</option>
-              <option value="Yakkasaroy">Yakkasaroy</option>
+              <option value="Guliston sh.">Guliston shahri</option>
+              <option value="Yangiyer sh.">Yangiyer shahri</option>
+              <option value="Shirin sh.">Shirin shahri</option>
+              <option value="Boyovut">Boyovut tumani</option>
+              <option value="Guliston tumani">Guliston tumani</option>
+              <option value="Mirzaobod">Mirzaobod tumani</option>
+              <option value="Oqoltin">Oqoltin tumani</option>
+              <option value="Sardoba">Sardoba tumani</option>
+              <option value="Sayxunobod">Sayxunobod tumani</option>
+              <option value="Sirdaryo tumani">Sirdaryo tumani</option>
+              <option value="Xovos">Xovos tumani</option>
             </select>
           </div>
           <div class="form-group">
@@ -543,12 +667,56 @@
 
         <div class="form-row two-col">
           <div class="form-group">
+            <label for="issueBrigade">Biriktiriladigan brigada *</label>
+            <select id="issueBrigade" required>
+              <option value="1-Brigada (Suv Ta’minoti)">1-Brigada (Suv Ta’minoti)</option>
+              <option value="2-Brigada (Elektr Tarmoqlari)">2-Brigada (Elektr Tarmoqlari)</option>
+              <option value="3-Brigada (Hududgaz Sirdaryo)">3-Brigada (Hududgaz Sirdaryo)</option>
+              <option value="4-Brigada (Yo‘l &amp; Yoritish)">4-Brigada (Yo‘l &amp; Yoritish)</option>
+              <option value="Viloyat Navbatchi Guruhi">Viloyat Navbatchi Guruhi</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="issueAssignee">Javobgar shaxs *</label>
+            <select id="issueAssignee" required>
+              <option value="Hamdov A.">Hamdov A.</option>
+              <option value="Hamidov A.">Hamidov A.</option>
+              <option value="Olimjon K.">Olimjon K.</option>
+              <option value="Javohir T.">Javohir T.</option>
+              <option value="Madina N.">Madina N.</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row two-col">
+          <div class="form-group">
+            <label for="issueSlaHours">Taxminiy hal qilish muddati (SLA) *</label>
+            <select id="issueSlaHours" required>
+              <option value="2">2 soat (Favqulodda / Juda shoshilinch)</option>
+              <option value="4" selected>4 soat (Tezkor nazorat)</option>
+              <option value="12">12 soat (Kunlik navbatchilik)</option>
+              <option value="24">24 soat (Standart 1 sutka)</option>
+              <option value="48">48 soat (Rejali ta’mir / 2 sutka)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="issueCondition">Ish vaqti / Ob-havo omili</label>
+            <select id="issueCondition">
+              <option value="Oddiy sharoit">Oddiy sharoit</option>
+              <option value="Tungi ish vaqti">🌙 Tungi ish vaqti</option>
+              <option value="Ob-havo ta’siri">🌧️❄️ Ob-havo ta’siri (Yomg‘ir / Sovuq)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row two-col">
+          <div class="form-group">
             <label for="issueAddress">Aniq manzil *</label>
-            <input type="text" id="issueAddress" required placeholder="Masalan: 7-mavze, 18-uy oldi" />
+            <input type="text" id="issueAddress" required placeholder="Masalan: Bahor MFY, 14-uy oldi" />
           </div>
           <div class="form-group">
             <label for="issueService">Mas’ul xizmat</label>
-            <input type="text" id="issueService" placeholder="Masalan: Toshkent Shahar Elektr Tarmoqlari" />
+            <input type="text" id="issueService" placeholder="Masalan: Sirdaryo Hududiy Elektr Tarmoqlari" />
           </div>
         </div>
 
@@ -561,6 +729,21 @@
             <option value="🔥 Gaz quvuri / Bosim">🔥 Gaz quvuri / Bosim</option>
             <option value="💡 Ko‘cha yoritish ustuni">💡 Ko‘cha yoritish ustuni</option>
           </select>
+        </div>
+
+        <div class="form-group">
+          <label>Kimlar xabardor qilingan?</label>
+          <div style="display:flex; flex-wrap:wrap; gap:12px; margin-top:4px;">
+            <label style="display:flex; align-items:center; gap:6px; font-weight:500;">
+              <input type="checkbox" id="notifyMahallaChair" checked /> Mahalla raisi
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; font-weight:500;">
+              <input type="checkbox" id="notifyDistrictDisp" /> Tuman dispetcheri
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; font-weight:500;">
+              <input type="checkbox" id="notifyBrigadeLead" /> Brigada boshlig‘i
+            </label>
+          </div>
         </div>
 
         <div class="form-group">
@@ -602,10 +785,9 @@
         <button class="icon-btn" id="closeHelpModalBtn" aria-label="Yopish">✕</button>
       </div>
       <div class="help-content">
-        <p><strong>1. Admin muzlatish:</strong> «Adminlar» bo‘limida istalgan adminni vaqtinchalik muzlatish yoki qayta faollashtirish mumkin.</p>
-        <p><strong>2. Shaxsiy eslatmalar:</strong> Har bir admin o‘z profiliga alohida eslatma yozib, belgilab qo‘ya oladi.</p>
-        <p><strong>3. Kunlik admin hisoboti:</strong> Kim nechta muammo o‘qiganini, izoh qoldirganini va yopganini ko‘ring.</p>
-        <p><strong>4. Joylashuv nazorati:</strong> Sozlamalarda bo‘limlar tartibini boshqaring va «Joylashuvni qulflash» orqali mahkamlang.</p>
+        <p><strong>1. Admin Panel huquqi:</strong> Yuqoridagi <code>☰</code> tugmasi faqat <strong>Bosh Admin</strong> va <strong>O‘quvchi Admin</strong> uchun Admin Panelni ochadi. Oddiy foydalanuvchilar panelni ko‘ra olmaydi.</p>
+        <p><strong>2. Admin kodi:</strong> Admin rolida kirishda standart kod — <code>2026</code>.</p>
+        <p><strong>3. Xavfsizlik tekshiruvi:</strong> Gaz va Elektr murojaatlarida hudud o‘chirilgani, aholi ogohlantirilgani va avariya xizmati bilan bog‘lanilganini belgilang.</p>
       </div>
       <div class="modal-footer">
         <button type="button" class="primary-btn" id="closeHelpOkBtn">Tushunarli</button>
